@@ -1,0 +1,12 @@
+{
+  "name": "sentinel-browser-checks",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node workbench.mjs",
+    "test:live": "node workbench.mjs --live"
+  },
+  "devDependencies": {
+    "playwright": "1.64.1"
+  }
+}

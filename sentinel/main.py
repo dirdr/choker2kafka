@@ -5,6 +5,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 
 from sentinel.detection.postgres import DetectionRepository
 from sentinel.detection.service import DetectionWorker
@@ -18,6 +19,8 @@ from sentinel.stream.kafka import KafkaStream
 from sentinel.stream.postgres import PostgresRepository
 from sentinel.stream.service import StreamWorker
 from sentinel.stream.web import router as stream_router
+from sentinel.workbench.web import ROOT as WORKBENCH_ROOT
+from sentinel.workbench.web import router as workbench_router
 
 load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 
@@ -68,3 +71,5 @@ app.include_router(readiness_router)
 app.include_router(stream_router)
 app.include_router(detection_router)
 app.include_router(investigation_router)
+app.mount("/static", StaticFiles(directory=WORKBENCH_ROOT / "static"), name="static")
+app.include_router(workbench_router)

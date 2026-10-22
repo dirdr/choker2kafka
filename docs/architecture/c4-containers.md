@@ -7,7 +7,7 @@ C4Container
     title Sentinel container architecture
     Person(engineer, "Platform engineer", "Operates and inspects the stream")
     System_Boundary(sentinel, "Sentinel project on Aiven") {
-        Container(app, "Sentinel application", "Python / FastAPI / Aiven Runtime", "HTTP API and background workers")
+        Container(app, "Sentinel application", "Python / FastAPI / Aiven Runtime", "Tabler/Jinja workbench, HTTP API and background workers")
         ContainerQueue(orders, "orders topic", "Aiven Kafka", "Synthetic events and durable offsets")
         ContainerDb(database, "Sentinel database", "Aiven PostgreSQL", "Contracts, events and incident evidence")
     }

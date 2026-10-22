@@ -89,12 +89,19 @@ Eligible-memory retrieval and capture remain part of the later investigation/mem
 - [ ] Persist recovery evidence before resolving an incident.
 - [ ] Retrieve only reviewed or verified, compatible, unexpired incident memory.
 
-## 6. Workbench and re-investigation — pending
+## 6. Workbench and re-investigation — workbench implemented; deployed verification pending
 
-- [ ] Serve pinned Tabler assets, Jinja templates and polling handlers from this application.
-- [ ] Show incidents, evidence, findings, configuration diffs, decisions and recovery history.
-- [ ] Display the configured model and each run's actual model, with an authenticated model selector if time permits.
-- [ ] Display tool starts/results live during original investigations and re-investigations, with status, elapsed time and evidence-backed LLM explanations; use fresh model calls for re-investigation and do not expose private chain-of-thought.
+- [x] Serve pinned Tabler assets, Jinja templates and polling handlers from this application.
+- [x] Show incident lists, recorded evidence, attempts, findings, stream records and contract versions.
+- [ ] Add configuration diffs, policy decisions and recovery history after their backend is implemented.
+- [x] Display the configured model and each run's actual model.
+- [ ] Add an authenticated model selector if time permits; Runtime model configuration already works.
+- [x] Display original investigation tool activity, status, duration and findings through compact polling.
+- [x] Add revision-checked manual producer controls and explicit paid retries; keep operator tokens in tab memory.
+- [x] Verify frontend behavior through API and DOM checks; add a pinned Playwright fixture/live harness.
+- [ ] Verify desktop/mobile rendering with Playwright outside the sandbox launch restriction.
+- [ ] Redeploy and test the workbench against the live captured incident.
+- [ ] Reuse the activity view for fresh isolated re-investigation calls without exposing private chain-of-thought.
 - [ ] Provide operator approval/rejection controls and safe timestamp rendering.
 - [ ] Re-investigate resolved incidents from captured source context in a separate run.
 - [ ] Prove re-investigation cannot mutate live configuration or change resolution counts.
@@ -156,10 +163,12 @@ The patch body contains `expected_revision`, `event_time_unit` and `reason`. Use
 
 Run tests with `uv run python -m unittest discover -s tests -v`. Set `TEST_DATABASE_URL` to a dedicated TLS-enabled PostgreSQL test database to include integration tests; those tests apply migrations, change test producer configuration and retain append-only evidence. They are skipped when that variable is absent. Do not point the integration suite at the running demo database.
 
-Current local result: 86 unit/API tests passed; nineteen network integration tests are skipped without `TEST_DATABASE_URL`. Those nineteen repository test cases also passed against isolated embedded PostgreSQL through a temporary test adapter, validating migrations, SQL, transactions, deduplication, restart identity and evidence immutability. This does not validate psycopg/TLS/network behavior against Aiven. The native PostgreSQL test server was blocked by sandbox shared-memory permissions. Lint, formatting and lockfile checks passed.
+Current local result: 91 unit/API tests passed; nineteen network integration tests are skipped without `TEST_DATABASE_URL`. Those nineteen repository test cases also passed against isolated embedded PostgreSQL through a temporary test adapter, validating migrations, SQL, transactions, deduplication, restart identity and evidence immutability. This does not validate psycopg/TLS/network behavior against Aiven. The native PostgreSQL test server was blocked by sandbox shared-memory permissions. Lint, formatting and lockfile checks passed.
 
 See [the architecture views](docs/architecture/index.md), [the table inventory](docs/architecture/data-model.md) and [contract definitions/live verification](docs/contracts.md). The next implementation slice is proposal/approval policy and deterministic recovery after live investigation verification.
 
 Investigation smoke: real Anthropic calls using the production Pydantic AI agent and pinned `claude-haiku-4-5-20251001` returned a validated finding after all three tools. The synthetic run used two inference requests, 11,294 input tokens and 1,032 output tokens. A temporary HTTP transport relayed the actual SDK requests through curl because sandboxed Python cannot access external networking; deployed SDK networking remains to be verified. SDK versions are pinned after finding an incompatibility with Anthropic 2.x.
 
 Live investigation hardening: a captured seconds incident reproduced a malformed structured result (array field encoded as text, required fields missing). Strict output plus one bounded correction and a smaller labelled sample passed a real model run against that frozen incident: two requests, 9,360 input tokens and 710 output tokens. Deployed confirmation of this patch remains pending. The submission deliverables and demo journey are mapped in [the submission plan](docs/submission.md).
+
+The workbench is available at `/` after redeployment, with direct incident links at `/incidents/{id}`. See [workbench deployment and checks](docs/workbench.md). The operator requested the frontend before the remediation slice; protected manual producer changes are available, while agent approvals, execution and verified recovery remain pending.

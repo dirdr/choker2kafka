@@ -1,7 +1,7 @@
 import json
 
 
-async def request(app, path, method="GET", body=None, token=None, query=b""):
+async def raw_request(app, path, method="GET", body=None, token=None, query=b""):
     messages = []
     headers = [(b"content-type", b"application/json")]
     if token:
@@ -19,7 +19,7 @@ async def request(app, path, method="GET", body=None, token=None, query=b""):
     await app(
         {
             "type": "http",
-            "asgi": {"version": "3.0"},
+            "asgi": {"version": "3.0", "spec_version": "2.4"},
             "http_version": "1.1",
             "method": method,
             "scheme": "http",
@@ -34,6 +34,13 @@ async def request(app, path, method="GET", body=None, token=None, query=b""):
         receive,
         send,
     )
-    return messages[0]["status"], json.loads(
-        b"".join(m.get("body", b"") for m in messages[1:])
+    return (
+        messages[0]["status"],
+        dict(messages[0]["headers"]),
+        b"".join(m.get("body", b"") for m in messages[1:]),
     )
+
+
+async def request(app, path, method="GET", body=None, token=None, query=b""):
+    status, _, content = await raw_request(app, path, method, body, token, query)
+    return status, json.loads(content)

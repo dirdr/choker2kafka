@@ -1,6 +1,6 @@
 # Hackathon submission plan
 
-The submission should tell one story: a Kafka timestamp regression is detected, investigated from captured data, repaired through approval, and resolved only after fresh events prove recovery. This is the target demonstration. Current code supports detection, capture and investigation; approval, execution, verified recovery and the workbench remain to be implemented.
+The submission should tell one story: a Kafka timestamp regression is detected, investigated from captured data, repaired through approval, and resolved only after fresh events prove recovery. This is the target demonstration. Current code supports detection, capture, investigation and the first workbench. Approval, execution and verified recovery remain to be implemented.
 
 ## Required deliverables
 
@@ -85,7 +85,7 @@ Publish the final slide with “Anyone with the link can view.” Verify the exa
 
 1. Redeploy and verify the current investigation-format/payload fix using the existing incident.
 2. Implement exact proposals, approval, revision-checked execution and verified recovery.
-3. Build the workbench for this complete journey, including compact live tool activity and model metadata.
+3. Extend the existing workbench with exact proposals, approval decisions and recovery evidence; compact live activity and model metadata are implemented.
 4. Verify the deployed journey and run the seven-case evaluation; save successes and failures.
 5. Implement the planned isolated re-investigation, then record supporting proof without changing live configuration or resolution counts.
 6. Rehearse and record the three-minute MP4; produce the evidence PDF and one pitch slide from measured results.

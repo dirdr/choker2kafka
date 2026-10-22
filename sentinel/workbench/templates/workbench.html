@@ -1,0 +1,329 @@
+<!doctype html>
+<html lang="en" data-bs-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark" />
+    <title>Sentinel · Stream operations</title>
+    <link
+      rel="icon"
+      type="image/svg+xml"
+      href="/static/vendor/icons/shield-check.svg"
+    />
+    <link rel="stylesheet" href="/static/vendor/tabler-1.7.0.min.css" />
+    <link rel="stylesheet" href="/static/workbench.css" />
+    <script type="module" src="/static/app.js"></script>
+  </head>
+  <body data-incident-id="{{ incident_id }}">
+    <a class="skip-link" href="#workspace">Skip to workspace</a>
+    <aside class="sidebar" aria-label="Main navigation">
+      <a class="brand" href="/" aria-label="Sentinel home"
+        ><img
+          src="/static/vendor/icons/shield-check.svg"
+          alt=""
+          width="23"
+          height="23"
+        /><span>sentinel<span class="brand-dot">.</span></span></a
+      >
+      <div class="workspace-label">WORKSPACE</div>
+      <nav>
+        <button
+          class="nav-item active"
+          data-view="incidents"
+          aria-current="page"
+        >
+          <img
+            src="/static/vendor/icons/alert-triangle.svg"
+            alt=""
+          />Incidents<span id="nav-incident-count" class="nav-count">…</span>
+        </button>
+        <button class="nav-item" data-view="stream">
+          <img src="/static/vendor/icons/activity.svg" alt="" />Live stream
+        </button>
+        <button class="nav-item" data-view="contracts">
+          <img src="/static/vendor/icons/database.svg" alt="" />Contracts
+        </button>
+      </nav>
+      <div class="sidebar-bottom">
+        <span class="environment-label">AIVEN / KAFKA</span
+        ><span id="sidebar-topic" class="mono">Connecting…</span
+        ><a href="/docs" target="_blank" rel="noopener"
+          >API reference
+          <img src="/static/vendor/icons/external-link.svg" alt=""
+        /></a>
+      </div>
+    </aside>
+    <div class="app-main">
+      <header class="topbar">
+        <div class="breadcrumb-label">
+          Workspace <span>/</span> <strong id="view-title">Incidents</strong>
+        </div>
+        <div class="topbar-actions">
+          <span id="poll-state" class="live-indicator">Connecting</span
+          ><button
+            id="pause-button"
+            class="btn btn-sm btn-outline-secondary"
+            aria-pressed="false"
+          >
+            Pause</button
+          ><button
+            id="operator-button"
+            class="btn btn-sm btn-outline-secondary"
+          >
+            <img src="/static/vendor/icons/settings.svg" alt="" />Producer
+            controls
+          </button>
+        </div>
+      </header>
+      <main id="workspace" tabindex="-1">
+        <div class="page-heading">
+          <div>
+            <h1 id="page-title">Stream operations</h1>
+            <p>Contract health, incident evidence and agent activity.</p>
+          </div>
+          <div class="model-label">
+            <span>INVESTIGATOR</span
+            ><strong id="configured-model" class="mono">Loading model…</strong
+            ><small id="agent-version"></small>
+          </div>
+        </div>
+        <div
+          id="source-errors"
+          class="source-errors"
+          role="status"
+          hidden
+        ></div>
+        <section class="metrics" aria-label="Live stream metrics">
+          <div class="metric">
+            <span>Transport</span><strong id="metric-transport">…</strong
+            ><small id="metric-transport-detail">Waiting for ingestion</small>
+          </div>
+          <div class="metric">
+            <span>Events / second</span
+            ><strong id="metric-throughput" class="mono">…</strong
+            ><small>Average over the last 10 seconds</small>
+          </div>
+          <div class="metric">
+            <span>Timestamp violations</span
+            ><strong id="metric-failure" class="mono">…</strong
+            ><small id="metric-failure-detail"
+              >Waiting for contract evaluation</small
+            >
+          </div>
+          <div class="metric">
+            <span>Open incidents</span
+            ><strong id="metric-incidents" class="mono">…</strong
+            ><small>Within the latest 20 incidents</small>
+          </div>
+        </section>
+        <section class="charts" aria-label="Metrics since this page opened">
+          <div class="chart-panel">
+            <div class="panel-heading">
+              <h2>Event throughput</h2>
+              <span>events/s · 10s average</span>
+            </div>
+            <canvas
+              id="throughput-chart"
+              height="75"
+              role="img"
+              aria-label="Event throughput since opening this page"
+            ></canvas>
+            <div class="chart-footer">
+              <span id="chart-start">Collecting live samples</span
+              ><span>Since opening this page</span>
+            </div>
+          </div>
+          <div class="chart-panel">
+            <div class="panel-heading">
+              <h2>Contract failure ratio</h2>
+              <span>recent 10s window · %</span>
+            </div>
+            <canvas
+              id="failure-chart"
+              height="75"
+              role="img"
+              aria-label="Contract failure ratio since opening this page"
+            ></canvas>
+            <div class="chart-footer">
+              <span id="chart-samples">Collecting live samples</span
+              ><span>Updates every 5s</span>
+            </div>
+          </div>
+        </section>
+        <section id="view-incidents" class="view-panel">
+          <div class="workspace-toolbar">
+            <div>
+              <h2>Incidents</h2>
+              <span id="incident-list-meta">Loading records…</span>
+            </div>
+            <label class="filter-label"
+              >Show<select
+                id="incident-filter"
+                class="form-select form-select-sm"
+              >
+                <option value="all">All incidents</option>
+                <option value="open">Open</option>
+                <option value="resolved">Resolved</option>
+              </select></label
+            >
+          </div>
+          <div class="incident-workspace">
+            <aside
+              id="incident-list"
+              class="incident-list"
+              aria-label="Recent incidents"
+            >
+              <div class="empty-state">Loading incidents…</div>
+            </aside>
+            <article
+              id="incident-detail"
+              class="incident-detail"
+              aria-label="Selected incident"
+            >
+              <div class="empty-state">
+                <h3>Select an incident</h3>
+                <p>Captured signals and investigations appear here.</p>
+              </div>
+            </article>
+          </div>
+        </section>
+        <section id="view-stream" class="view-panel" hidden>
+          <div class="workspace-toolbar">
+            <div>
+              <h2>Live stream</h2>
+              <span>Latest 20 accepted records</span>
+            </div>
+            <button
+              id="history-button"
+              class="btn btn-sm btn-outline-secondary"
+            >
+              Configuration history
+            </button>
+          </div>
+          <div id="stream-configuration" class="configuration-strip"></div>
+          <div class="table-responsive">
+            <table class="table table-vcenter">
+              <thead>
+                <tr>
+                  <th>Ingested · UTC</th>
+                  <th>Raw event_time</th>
+                  <th>Config</th>
+                  <th>Partition / offset</th>
+                  <th>Event ID</th>
+                </tr>
+              </thead>
+              <tbody id="events-body">
+                <tr>
+                  <td colspan="5">Loading events…</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+        <section id="view-contracts" class="view-panel" hidden>
+          <div class="workspace-toolbar">
+            <div>
+              <h2>Contract versions</h2>
+              <span
+                >Expectations are versioned independently of producer
+                configuration.</span
+              >
+            </div>
+          </div>
+          <div id="contracts-body" class="contracts-body">
+            Loading contracts…
+          </div>
+        </section>
+        <footer class="workbench-footer">
+          <span id="last-updated">Waiting for data</span
+          ><span>Synthetic orders · Declared consumer expectations</span>
+        </footer>
+      </main>
+    </div>
+    <div id="notification" class="notification" role="status" hidden></div>
+    <dialog id="evidence-dialog" class="evidence-dialog">
+      <div class="dialog-heading">
+        <div>
+          <h2 id="evidence-title">Evidence</h2>
+          <p id="evidence-subtitle"></p>
+        </div>
+        <button
+          class="btn btn-sm btn-outline-secondary"
+          data-close="evidence-dialog"
+        >
+          Close
+        </button>
+      </div>
+      <pre id="evidence-body" tabindex="0"></pre>
+    </dialog>
+    <dialog id="operator-dialog">
+      <form id="producer-form">
+        <div class="dialog-heading">
+          <div>
+            <h2>Producer configuration</h2>
+            <p id="producer-current">Loading current configuration…</p>
+          </div>
+          <button
+            type="button"
+            class="btn btn-sm btn-outline-secondary"
+            data-close="operator-dialog"
+          >
+            Close
+          </button>
+        </div>
+        <label class="form-label" for="producer-unit">Timestamp unit</label
+        ><select id="producer-unit" class="form-select">
+          <option value="milliseconds">Milliseconds</option>
+          <option value="seconds">Seconds</option>
+          <option value="microseconds">Microseconds</option></select
+        ><label class="form-label mt-3" for="producer-reason">Reason</label
+        ><input
+          id="producer-reason"
+          class="form-control"
+          maxlength="500"
+          required
+          placeholder="Describe this change"
+        />
+        <p class="form-hint mt-3">
+          This changes new Kafka events. The contract stays in effect.
+        </p>
+        <div class="dialog-actions">
+          <button class="btn btn-primary" id="apply-producer" type="submit">
+            Apply configuration
+          </button>
+        </div>
+      </form>
+    </dialog>
+    <dialog id="token-dialog">
+      <form id="token-form">
+        <div class="dialog-heading">
+          <div>
+            <h2>Operator access</h2>
+            <p id="token-action"></p>
+          </div>
+          <button
+            type="button"
+            class="btn btn-sm btn-outline-secondary"
+            data-close="token-dialog"
+          >
+            Cancel
+          </button>
+        </div>
+        <label for="operator-token" class="form-label">Operator token</label
+        ><input
+          id="operator-token"
+          type="password"
+          class="form-control"
+          required
+          autocomplete="off"
+        />
+        <p class="form-hint mt-3">
+          Your token stays in this tab and clears when you reload.
+        </p>
+        <div class="dialog-actions">
+          <button class="btn btn-primary" type="submit">Continue</button>
+        </div>
+      </form>
+    </dialog>
+  </body>
+</html>
