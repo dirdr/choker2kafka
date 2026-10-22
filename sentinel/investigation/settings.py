@@ -13,7 +13,14 @@ def configured_model() -> str:
 
 
 def token_limit() -> int:
-    value = int(os.getenv("INVESTIGATION_TOKEN_LIMIT", "20000"))
+    value = int(os.getenv("INVESTIGATION_TOKEN_LIMIT", "50000"))
     if not 4000 <= value <= 100000:
         raise ValueError("INVESTIGATION_TOKEN_LIMIT must be between 4000 and 100000")
+    return value
+
+
+def deadline_seconds() -> int:
+    value = int(os.getenv("INVESTIGATION_DEADLINE_SECONDS", "120"))
+    if not 30 <= value <= 300:
+        raise ValueError("INVESTIGATION_DEADLINE_SECONDS must be between 30 and 300")
     return value

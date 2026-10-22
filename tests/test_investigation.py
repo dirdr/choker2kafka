@@ -18,7 +18,11 @@ from sentinel.investigation.domain import CapturedEvidence, Finding, Unsupported
 from sentinel.investigation.errors import describe_failure
 from sentinel.investigation.postgres import InvestigationConflict
 from sentinel.investigation.service import InvestigationWorker
-from sentinel.investigation.settings import configured_model
+from sentinel.investigation.settings import (
+    configured_model,
+    deadline_seconds,
+    token_limit,
+)
 from sentinel.main import app
 
 
@@ -406,7 +410,7 @@ class InvestigationApiTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(status, 200)
         self.assertEqual(body["model_id"], "claude-sonnet-4-6")
         self.assertEqual(body["provider"], "anthropic")
-        self.assertEqual(body["deadline_seconds"], 45)
+        self.assertEqual(body["deadline_seconds"], 120)
 
     async def test_retry_requires_authentication(self):
         with patch.dict(os.environ, {"OPERATOR_TOKEN": "test"}):
@@ -414,6 +418,62 @@ class InvestigationApiTests(unittest.IsolatedAsyncioTestCase):
                 app, f"/api/incidents/{uuid4()}/investigations/retry", method="POST"
             )
         self.assertEqual(status, 401)
+        self.repository.retry.assert_not_called()
+
+    async def test_retry_budget_overrides_apply_to_the_new_attempt(self):
+        app.state.investigation_worker = MagicMock()
+        self.addCleanup(lambda: delattr(app.state, "investigation_worker"))
+        self.repository.retry.return_value = {"status": "queued"}
+        incident_id = uuid4()
+        with patch.dict(os.environ, {"OPERATOR_TOKEN": "test"}):
+            status, _ = await request(
+                app,
+                f"/api/incidents/{incident_id}/investigations/retry",
+                method="POST",
+                token="test",
+                body={"token_limit": 80000, "deadline_seconds": 240},
+            )
+        self.assertEqual(status, 202)
+        self.assertEqual(self.repository.retry.call_args.args[2:], (80000, 240))
+
+    async def test_retry_without_a_body_uses_runtime_defaults(self):
+        app.state.investigation_worker = MagicMock()
+        self.addCleanup(lambda: delattr(app.state, "investigation_worker"))
+        self.repository.retry.return_value = {"status": "queued"}
+        with patch.dict(
+            os.environ,
+            {
+                "OPERATOR_TOKEN": "test",
+                "INVESTIGATION_TOKEN_LIMIT": "60000",
+                "INVESTIGATION_DEADLINE_SECONDS": "180",
+            },
+        ):
+            status, _ = await request(
+                app,
+                f"/api/incidents/{uuid4()}/investigations/retry",
+                method="POST",
+                token="test",
+            )
+        self.assertEqual(status, 202)
+        self.assertEqual(self.repository.retry.call_args.args[2:], (60000, 180))
+
+    async def test_retry_rejects_invalid_budget_without_queueing(self):
+        with patch.dict(os.environ, {"OPERATOR_TOKEN": "test"}):
+            for body in (
+                {"token_limit": 100001},
+                {"deadline_seconds": 301},
+                {"token_limit": True},
+                {"deadline_seconds": "120"},
+                {"unexpected": 1},
+            ):
+                status, _ = await request(
+                    app,
+                    f"/api/incidents/{uuid4()}/investigations/retry",
+                    method="POST",
+                    token="test",
+                    body=body,
+                )
+                self.assertEqual(status, 422)
         self.repository.retry.assert_not_called()
 
     async def test_retry_rejects_nonfailed_run(self):
@@ -431,6 +491,24 @@ class InvestigationApiTests(unittest.IsolatedAsyncioTestCase):
 
 
 class ModelConfigurationTests(unittest.TestCase):
+    def test_budget_environment_settings_are_validated(self):
+        with patch.dict(
+            os.environ,
+            {
+                "INVESTIGATION_TOKEN_LIMIT": "80000",
+                "INVESTIGATION_DEADLINE_SECONDS": "240",
+            },
+        ):
+            self.assertEqual(token_limit(), 80000)
+            self.assertEqual(deadline_seconds(), 240)
+        for key, value, read in (
+            ("INVESTIGATION_TOKEN_LIMIT", "100001", token_limit),
+            ("INVESTIGATION_DEADLINE_SECONDS", "29", deadline_seconds),
+            ("INVESTIGATION_DEADLINE_SECONDS", "301", deadline_seconds),
+        ):
+            with patch.dict(os.environ, {key: value}), self.assertRaises(ValueError):
+                read()
+
     def test_model_setting_rejects_other_providers_and_blank_ids(self):
         for value in ("", "openai:gpt-4", "claude- invalid"):
             with (

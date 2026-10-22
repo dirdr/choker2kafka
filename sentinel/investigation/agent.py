@@ -13,6 +13,8 @@ from sentinel.connections import required
 from sentinel.investigation.domain import CapturedEvidence, Finding
 from sentinel.investigation.settings import MODEL_ID
 
+OUTPUT_TOKEN_LIMIT = 3000
+
 INSTRUCTIONS = """
 Investigate a Kafka contract violation using only the captured evidence tools.
 Call inspect_incident and lookup_producer_context before drawing conclusions.
@@ -66,7 +68,7 @@ def build_agent(model: Model) -> Agent[EvidenceDependencies, Finding]:
         output_type=ToolOutput(Finding, strict=True),
         instructions=INSTRUCTIONS,
         retries={"tools": 0, "output": 1},
-        model_settings={"max_tokens": 1500, "temperature": 0},
+        model_settings={"max_tokens": OUTPUT_TOKEN_LIMIT, "temperature": 0},
         tools=[
             Tool(
                 inspect_incident,
@@ -94,15 +96,16 @@ async def investigate(
     budget: int,
     model: Model | None = None,
     model_id: str = MODEL_ID,
+    deadline_seconds: int = 120,
 ) -> Finding:
     client = None
     try:
-        async with asyncio.timeout(45):
+        async with asyncio.timeout(deadline_seconds):
             if model is None:
                 client = AsyncAnthropic(
                     api_key=required("ANTHROPIC_API_KEY"),
                     max_retries=0,
-                    timeout=20,
+                    timeout=min(deadline_seconds, 60),
                 )
                 model = AnthropicModel(
                     model_id, provider=AnthropicProvider(anthropic_client=client)
@@ -115,7 +118,7 @@ async def investigate(
                 usage_limits=UsageLimits(
                     request_limit=6,
                     tool_calls_limit=10,
-                    total_tokens_limit=budget - 1500,
+                    total_tokens_limit=budget - OUTPUT_TOKEN_LIMIT,
                     count_tokens_before_request=True,
                 ),
             )

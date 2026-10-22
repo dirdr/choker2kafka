@@ -53,6 +53,7 @@ class InvestigationWorker:
                     usage,
                     run["token_limit"],
                     model_id=run["model_id"],
+                    deadline_seconds=run["deadline_seconds"],
                 )
             ).model_dump(mode="json")
         except Exception as error:

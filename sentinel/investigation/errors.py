@@ -39,7 +39,7 @@ def describe_failure(error: Exception) -> tuple[str, dict]:
         }
     if isinstance(error, TimeoutError):
         return "deadline_exceeded", {
-            "message": "The investigation exceeded its 45-second deadline"
+            "message": "The investigation exceeded its configured deadline"
         }
     if isinstance(error, ModelHTTPError):
         return "model_http_error", {

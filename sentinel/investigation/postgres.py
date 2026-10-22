@@ -3,7 +3,7 @@ from uuid import UUID, uuid4
 from psycopg import sql
 from psycopg.types.json import Jsonb
 
-from sentinel.investigation.settings import AGENT_VERSION
+from sentinel.investigation.settings import AGENT_VERSION, deadline_seconds
 from sentinel.stream.postgres import PostgresRepository
 
 
@@ -15,22 +15,30 @@ class InvestigationRepository:
     def __init__(self, storage: PostgresRepository):
         self.storage = storage
 
-    def enqueue(self, model_id: str, token_limit: int, topic: str) -> None:
+    def enqueue(
+        self, model_id: str, token_limit: int, topic: str, deadline: int | None = None
+    ) -> None:
         with self.storage.connection() as connection:
             connection.execute(
                 """
                 INSERT INTO sentinel.investigations
                     (investigation_id, incident_id, snapshot_id, kind, status,
-                     model_id, agent_version, token_limit)
+                     model_id, agent_version, token_limit, deadline_seconds)
                 SELECT gen_random_uuid(), incident_id, snapshot_id, 'original',
-                       'queued', %s, %s, %s
+                       'queued', %s, %s, %s, %s
                 FROM sentinel.incidents i
                 WHERE status = 'open' AND topic = %s AND NOT EXISTS (
                     SELECT 1 FROM sentinel.investigations r
                     WHERE r.incident_id = i.incident_id
                 ) ON CONFLICT DO NOTHING
                 """,
-                (model_id, AGENT_VERSION, token_limit, topic),
+                (
+                    model_id,
+                    AGENT_VERSION,
+                    token_limit,
+                    deadline if deadline is not None else deadline_seconds(),
+                    topic,
+                ),
             )
 
     def claim(self) -> dict | None:
@@ -41,7 +49,7 @@ class InvestigationRepository:
                 SET status = 'failed', error_code = 'interrupted', retryable = true,
                     finished_at = clock_timestamp()
                 WHERE status = 'running'
-                  AND started_at < clock_timestamp() - interval '90 seconds'
+                  AND started_at < clock_timestamp() - (deadline_seconds + 45) * interval '1 second'
                 """
             )
             return connection.execute(
@@ -168,7 +176,13 @@ class InvestigationRepository:
                 ).fetchall()
             return run
 
-    def retry(self, incident_id: UUID, model_id: str, token_limit: int) -> dict | None:
+    def retry(
+        self,
+        incident_id: UUID,
+        model_id: str,
+        token_limit: int,
+        deadline: int | None = None,
+    ) -> dict | None:
         with self.storage.connection() as connection:
             incident = connection.execute(
                 "SELECT * FROM sentinel.incidents WHERE incident_id = %s FOR UPDATE",
@@ -193,8 +207,8 @@ class InvestigationRepository:
                 """
                 INSERT INTO sentinel.investigations
                     (investigation_id, incident_id, snapshot_id, kind, status,
-                     model_id, agent_version, token_limit)
-                VALUES (%s, %s, %s, 'retry', 'queued', %s, %s, %s)
+                     model_id, agent_version, token_limit, deadline_seconds)
+                VALUES (%s, %s, %s, 'retry', 'queued', %s, %s, %s, %s)
                 RETURNING *
                 """,
                 (
@@ -204,5 +218,6 @@ class InvestigationRepository:
                     model_id,
                     AGENT_VERSION,
                     token_limit,
+                    deadline if deadline is not None else deadline_seconds(),
                 ),
             ).fetchone()

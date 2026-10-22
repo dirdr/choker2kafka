@@ -67,11 +67,14 @@ class InvestigationIntegrationTests(unittest.TestCase):
             error_detail={"message": "Deadline reached"},
         )
         retry = self.investigations.retry(
-            self.incident["incident_id"], "claude-sonnet-4-6", 20000
+            self.incident["incident_id"], "claude-sonnet-4-6", 80000, 240
         )
         self.assertNotEqual(retry["investigation_id"], run_id)
         self.assertEqual(retry["snapshot_id"], self.run["snapshot_id"])
         self.assertEqual(retry["model_id"], "claude-sonnet-4-6")
+        self.assertEqual(retry["token_limit"], 80000)
+        self.assertEqual(retry["deadline_seconds"], 240)
+        self.assertEqual(self.investigations.detail(run_id)["token_limit"], 20000)
         self.assertEqual(self.investigations.detail(run_id)["model_id"], MODEL_ID)
         self.assertEqual(
             self.investigations.detail(run_id)["error_detail"],
@@ -86,7 +89,7 @@ class InvestigationIntegrationTests(unittest.TestCase):
     def test_restart_recovers_abandoned_run_without_repeating_paid_calls(self):
         with self.storage.connection() as connection:
             connection.execute(
-                "UPDATE sentinel.investigations SET started_at = clock_timestamp() - interval '100 seconds' WHERE investigation_id = %s",
+                "UPDATE sentinel.investigations SET started_at = clock_timestamp() - (deadline_seconds + 46) * interval '1 second' WHERE investigation_id = %s",
                 (self.run["investigation_id"],),
             )
         self.assertIsNone(self.investigations.claim())
@@ -96,6 +99,18 @@ class InvestigationIntegrationTests(unittest.TestCase):
         self.assertTrue(saved["retryable"])
         self.investigations.enqueue(MODEL_ID, 20000, self.topic)
         self.assertIsNone(self.investigations.claim())
+
+    def test_restart_does_not_interrupt_a_run_with_time_remaining(self):
+        with self.storage.connection() as connection:
+            connection.execute(
+                "UPDATE sentinel.investigations SET deadline_seconds = 240, started_at = clock_timestamp() - interval '100 seconds' WHERE investigation_id = %s",
+                (self.run["investigation_id"],),
+            )
+        self.assertIsNone(self.investigations.claim())
+        self.assertEqual(
+            self.investigations.detail(self.run["investigation_id"])["status"],
+            "running",
+        )
 
     def test_tool_activity_is_live_and_append_only(self):
         run_id = self.run["investigation_id"]
