@@ -10,6 +10,12 @@ class Attribution(FrozenModel):
     configuration_revision: int = Field(gt=0)
 
 
+class InvestigationCheck(FrozenModel):
+    question: str = Field(min_length=1, max_length=300)
+    result: str = Field(min_length=1, max_length=800)
+    evidence_ids: list[str] = Field(min_length=1, max_length=10)
+
+
 class Finding(FrozenModel):
     conclusion: Literal["supported", "insufficient_evidence"]
     likely_cause: str = Field(min_length=1, max_length=1500)
@@ -20,6 +26,7 @@ class Finding(FrozenModel):
     confidence_rationale: str = Field(min_length=1, max_length=1500)
     evidence_ids: list[str] = Field(min_length=1, max_length=100)
     attribution: Attribution | None
+    checks: list[InvestigationCheck] = Field(default_factory=list, max_length=4)
 
 
 class UnsupportedFinding(ValueError):
@@ -99,6 +106,10 @@ class CapturedEvidence:
 
     def validate(self, finding: Finding) -> Finding:
         references = set(finding.evidence_ids)
+        if any(
+            not set(check.evidence_ids) <= self.read_ids for check in finding.checks
+        ):
+            raise UnsupportedFinding("unknown_or_unread_check_evidence")
         if not references <= self.read_ids:
             raise UnsupportedFinding("unknown_or_unread_evidence")
         consumers = {

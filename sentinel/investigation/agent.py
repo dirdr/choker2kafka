@@ -1,8 +1,10 @@
 import asyncio
 from collections.abc import Callable
 from dataclasses import dataclass
+from typing import Annotated
 
 from anthropic import AsyncAnthropic
+from pydantic import Field
 from pydantic_ai import Agent, RunContext, Tool, ToolOutput
 from pydantic_ai.models import Model
 from pydantic_ai.models.anthropic import AnthropicModel
@@ -11,6 +13,7 @@ from pydantic_ai.usage import RunUsage, UsageLimits
 
 from sentinel.connections import required
 from sentinel.investigation.domain import CapturedEvidence, Finding
+from sentinel.investigation.explanations import tool_summary
 from sentinel.investigation.settings import MODEL_ID
 
 OUTPUT_TOKEN_LIMIT = 3000
@@ -31,7 +34,11 @@ there is no mutation tool. Recommend aligning the producer with its captured
 contract. Contract versions are immutable; do not recommend rewriting a contract
 to hide a violation. Return a concise finding, not private reasoning.
 All tool arguments must be JSON, with arrays for list fields. Keep each prose
-field to two short sentences and cite only the few evidence IDs needed.
+field concise and cite only the few evidence IDs needed.
+For each tool call, supply a short public purpose explaining what you will check.
+Do not include private chain-of-thought. In the final finding include up to four
+checks: a factual question, its observed result, and supporting evidence IDs.
+Separate observed evidence from hypotheses and declared consumer impact.
 """
 
 
@@ -40,25 +47,41 @@ class EvidenceDependencies:
     evidence: CapturedEvidence
     record: Callable[[str, str, str, dict], None]
 
-    async def read(self, call_id: str, name: str) -> dict:
+    async def read(self, call_id: str, name: str, purpose: str) -> dict:
         await asyncio.to_thread(
-            self.record, call_id, name, "started", {"arguments": {}}
+            self.record, call_id, name, "started", {"arguments": {"purpose": purpose}}
         )
         result = self.evidence.read(name)
+        result["public_summary"] = tool_summary(name, result)
         await asyncio.to_thread(self.record, call_id, name, "returned", result)
         return result
 
 
-async def inspect_incident(ctx: RunContext[EvidenceDependencies]) -> dict:
-    return await ctx.deps.read(ctx.tool_call_id, "inspect_incident")
+async def inspect_incident(
+    ctx: RunContext[EvidenceDependencies],
+    purpose: Annotated[
+        str, Field(min_length=1, max_length=300)
+    ] = "Compare the captured contract with the failing event sample",
+) -> dict:
+    return await ctx.deps.read(ctx.tool_call_id, "inspect_incident", purpose)
 
 
-async def lookup_producer_context(ctx: RunContext[EvidenceDependencies]) -> dict:
-    return await ctx.deps.read(ctx.tool_call_id, "lookup_producer_context")
+async def lookup_producer_context(
+    ctx: RunContext[EvidenceDependencies],
+    purpose: Annotated[
+        str, Field(min_length=1, max_length=300)
+    ] = "Link the affected revision to captured configuration and consumer expectations",
+) -> dict:
+    return await ctx.deps.read(ctx.tool_call_id, "lookup_producer_context", purpose)
 
 
-async def find_prior_incidents(ctx: RunContext[EvidenceDependencies]) -> dict:
-    return await ctx.deps.read(ctx.tool_call_id, "find_prior_incidents")
+async def find_prior_incidents(
+    ctx: RunContext[EvidenceDependencies],
+    purpose: Annotated[
+        str, Field(min_length=1, max_length=300)
+    ] = "Check whether reviewed historical evidence was captured",
+) -> dict:
+    return await ctx.deps.read(ctx.tool_call_id, "find_prior_incidents", purpose)
 
 
 def build_agent(model: Model) -> Agent[EvidenceDependencies, Finding]:

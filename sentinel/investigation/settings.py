@@ -4,7 +4,7 @@ import re
 from pydantic import BaseModel, ConfigDict, Field
 
 MODEL_ID = "claude-haiku-4-5-20251001"
-AGENT_VERSION = "investigator-v2"
+AGENT_VERSION = "investigator-v3"
 
 
 def configured_model() -> str:

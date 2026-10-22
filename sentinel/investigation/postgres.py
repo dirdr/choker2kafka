@@ -215,6 +215,8 @@ class InvestigationRepository:
                             else """
                         activity_id, investigation_id, tool_call_id, tool_name,
                         phase, recorded_at,
+                        body->'arguments'->>'purpose' AS purpose,
+                        body->>'public_summary' AS public_summary,
                         jsonb_array_length(body->'documents') AS document_count,
                         body->>'snapshot_id' AS snapshot_id,
                         body->>'status' AS result_status,
