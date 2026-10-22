@@ -183,3 +183,5 @@ The workbench is available at `/` after redeployment, with direct incident links
 - [ ] Implement the agreed producer-config PR workflow and resolve only after merge/deployment and fresh recovery proof.
 
 - [x] Darken the workbench and increase text sizes with a self-hosted Inter font.
+
+The next repair slice is specified in [the producer PR workflow](docs/producer-repair.md). A database-only Bruno fault does not create a file diff: the PR demonstration must introduce the fault in the versioned producer config and apply it through deployment. A PR is a proposed repair; only verified new data establishes resolution.

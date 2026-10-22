@@ -13,7 +13,7 @@ The ingestion and detection slices use thirteen application tables in the `senti
 | `sentinel.monitoring_runs` | Topic, producer, run identity and start/end time | Groups monitoring episodes across process restarts |
 | `sentinel.contract_evaluations` | Evaluation time, rule, contract version, state, sample counts, profiles and optional signal | Records healthy, warming-up, stale and violating checks |
 | `sentinel.incident_snapshots` | Captured time and immutable JSON evidence body | Makes investigation reproducible after live sources change |
-| `sentinel.incidents` | Violation episode, status, triggering contract, signal and snapshot reference | Suppresses repeated active incidents and preserves incident identity |
+| `sentinel.incidents` | Violation episode, faulty configuration revision, status, triggering contract, signal and snapshot reference | Deduplicates repeated windows per faulty revision and preserves incident identity |
 | `sentinel.incident_timeline` | Append-only typed incident entries | Starts with detection and later supports investigation, decisions, actions and recovery |
 | `sentinel.investigations` | Queue state, frozen snapshot reference, pinned model/agent version, token budget, finding, failure, duration and usage | Records each original attempt and explicit retry; terminal results are not overwritten by workers |
 | `sentinel.investigation_activity` | Append-only tool-call ID, name, start/result, timestamp and actual arguments/result | Supports live polling and later review without recording private chain-of-thought |
