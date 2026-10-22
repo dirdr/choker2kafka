@@ -54,6 +54,18 @@ class WorkbenchTests(unittest.IsolatedAsyncioTestCase):
             b'id="view-stream" class="view-panel stream-view" hidden', content
         )
 
+    async def test_interface_uses_contract_neutral_labels(self):
+        status, _, content = await raw_request(app, "/")
+        self.assertEqual(status, 200)
+        for value in (
+            b"Timestamp violations",
+            b"Raw event_time",
+            b"Synthetic orders",
+            b"poll-state",
+        ):
+            self.assertNotIn(value, content)
+        self.assertIn(b"Producer / revision", content)
+
     async def test_stream_and_contracts_have_separate_addresses(self):
         for path in ("/stream", "/contracts"):
             status, _, content = await raw_request(app, path)

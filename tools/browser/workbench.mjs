@@ -47,6 +47,8 @@ try {
         .getElementById("incident-detail")
         .textContent.includes("Investigation failed"),
     );
+    assert.equal(await page.locator(".activity-table tbody tr").count(), 4);
+    assert.equal(await page.locator("#run-diagnostics").getAttribute("open"), null);
     await page.locator('[data-action="tool"]').click();
     await page.locator("#evidence-dialog[open]").waitFor();
     assert.match(
@@ -78,7 +80,10 @@ try {
       !document.getElementById("events-body").textContent.includes("Loading"),
   );
   if (!live) {
-    assert.match(await page.locator("#events-body").innerText(), /1792670400/);
+    await page.locator('[data-event]').first().click();
+    await page.locator("#evidence-dialog[open]").waitFor();
+    assert.match(await page.locator("#evidence-body").innerText(), /1792670400/);
+    await page.locator('[data-close="evidence-dialog"]').click();
     fixture.run.status = "completed";
     fixture.run.finding = {
       ...fixture.finding,
@@ -94,6 +99,12 @@ try {
         .textContent.includes("<img src=x"),
     );
     assert.equal(await page.locator('img[src="x"]').count(), 0);
+    assert.equal(await page.locator("#finding-evidence").getAttribute("open"), null);
+    await page.locator("#finding-evidence > summary").click();
+    await page.locator('[data-action="reference"]').click();
+    await page.locator("#evidence-dialog[open]").waitFor();
+    assert.match(await page.locator("#evidence-body").innerText(), /seconds/);
+    await page.locator('[data-close="evidence-dialog"]').click();
   } else await page.locator('[data-view="incidents"]').click();
   await page.setViewportSize({ width: 390, height: 844 });
   assert.ok(

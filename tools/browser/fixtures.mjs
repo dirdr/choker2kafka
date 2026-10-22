@@ -27,7 +27,8 @@ export function fixtures() {
     status: "failed",
     model_id: "claude-haiku-4-5-20251001",
     agent_version: "investigator-v2",
-    token_limit: 20000,
+    token_limit: 50000,
+    deadline_seconds: 120,
     created_at: capturedAt,
     started_at: capturedAt,
     finished_at: capturedAt,
@@ -44,6 +45,13 @@ export function fixtures() {
       output_tokens: 710,
     },
     activity: [
+      {
+        activity_id: "b020c2fc-5b18-47cb-8538-e1f4c1af1268",
+        tool_call_id: "inspect",
+        tool_name: "inspect_incident",
+        phase: "started",
+        recorded_at: capturedAt,
+      },
       {
         activity_id: "b120c2fc-5b18-47cb-8538-e1f4c1af1268",
         tool_call_id: "inspect",
@@ -119,6 +127,8 @@ export function fixtures() {
       provider: "anthropic",
       model_id: run.model_id,
       agent_version: run.agent_version,
+      token_limit: run.token_limit,
+      deadline_seconds: run.deadline_seconds,
     },
     "/api/producer/configuration": configuration,
     "/api/incidents?limit=20": [incident],
@@ -129,7 +139,7 @@ export function fixtures() {
       ...run,
       activity: [
         {
-          ...run.activity[0],
+          ...run.activity[1],
           body: {
             documents: [
               { evidence_id: "configuration:checkout:2", data: configuration },
@@ -148,7 +158,9 @@ export function fixtures() {
       {
         event_id: "c120c2fc-5b18-47cb-8538-e1f4c1af1268",
         ingested_at: capturedAt,
-        event_time: 1792670400,
+        topic: "orders",
+        producer_id: "checkout",
+        payload: {event_time: 1792670400},
         config_revision: 2,
         partition: 0,
         kafka_offset: 123,

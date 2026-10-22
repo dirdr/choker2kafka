@@ -213,23 +213,6 @@ pre {
   gap: 10px;
   align-items: center;
 }
-.live-indicator {
-  font-size: 13px;
-  color: var(--good);
-  display: flex;
-  gap: 6px;
-  align-items: center;
-}
-.live-indicator:before {
-  content: "";
-  width: 5px;
-  height: 5px;
-  background: currentColor;
-  border-radius: 50%;
-}
-.live-indicator.paused {
-  color: var(--warning);
-}
 .btn {
   display: inline-flex;
   align-items: center;
@@ -273,28 +256,9 @@ h1 {
   color: var(--muted);
   margin-top: 5px;
 }
-.model-label {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  text-align: right;
-}
-.model-label span {
-  font-size: 12px;
-  letter-spacing: 1.3px;
-  color: var(--muted);
-}
-.model-label strong {
-  font-size: 13px;
-  font-weight: 500;
-}
-.model-label small {
-  color: var(--muted);
-  font-size: 12px;
-}
 .metrics {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   border: 1px solid var(--line);
   border-radius: 5px;
   overflow: hidden;
@@ -336,46 +300,6 @@ h1 {
 }
 .muted {
   color: var(--muted);
-}
-.charts {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  margin-bottom: 23px;
-}
-.chart-panel {
-  min-width: 0;
-  background: var(--panel);
-  border: 1px solid var(--line);
-  border-radius: 5px;
-  padding: 12px 14px 9px;
-}
-.panel-heading {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 10px;
-}
-.panel-heading h2 {
-  font-size: 13px;
-  font-weight: 500;
-}
-.panel-heading > span {
-  font-size: 12px;
-  color: var(--muted);
-}
-canvas {
-  display: block;
-  width: 100%;
-  height: 75px;
-  margin-top: 10px;
-}
-.chart-footer {
-  display: flex;
-  justify-content: space-between;
-  color: var(--muted);
-  font-size: 12px;
-  margin-top: 4px;
 }
 .view-panel {
   border: 1px solid var(--line);
@@ -471,34 +395,6 @@ canvas {
   font-weight: 550;
   overflow-wrap: anywhere;
 }
-.detail-heading p {
-  font-size: 12px;
-  color: var(--muted);
-  margin: 6px 0 15px;
-}
-.detail-metadata {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px 20px;
-  padding: 10px 0 16px;
-  border-bottom: 1px solid var(--line);
-  font-size: 12px;
-}
-.detail-metadata > span {
-  display: flex;
-  gap: 7px;
-  color: var(--muted);
-}
-.detail-metadata strong {
-  color: var(--ink);
-  font-weight: 400;
-}
-.detail-columns {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(220px, 0.9fr);
-  gap: 24px;
-  padding-top: 20px;
-}
 .section-heading {
   display: flex;
   justify-content: space-between;
@@ -514,53 +410,6 @@ canvas {
   font-size: 12px;
   color: var(--muted);
 }
-.timeline {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-.timeline li {
-  padding: 0 0 18px 18px;
-  border-left: 1px solid var(--line);
-  position: relative;
-  margin-left: 4px;
-}
-.timeline li:before {
-  content: "";
-  position: absolute;
-  left: -3px;
-  top: 4px;
-  width: 5px;
-  height: 5px;
-  background: #7a8492;
-  border-radius: 50%;
-}
-.timeline li.returned:before {
-  background: var(--good);
-}
-.timeline li.failed:before {
-  background: var(--bad);
-}
-.timeline li.started:before {
-  background: var(--accent);
-}
-.timeline h4 {
-  font-size: 13px;
-  font-weight: 500;
-  margin-bottom: 3px;
-  overflow-wrap: anywhere;
-}
-.timeline p {
-  font-size: 12px;
-  color: var(--muted);
-  line-height: 1.6;
-}
-.timeline time {
-  display: block;
-  color: var(--muted);
-  font-size: 12px;
-  margin-top: 5px;
-}
 .text-button {
   border: 0;
   background: none;
@@ -571,55 +420,6 @@ canvas {
 }
 .text-button:hover {
   text-decoration: underline;
-}
-.attempt-select {
-  width: 100%;
-  margin-bottom: 12px;
-  font-size: 12px;
-}
-.run-summary {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 12px;
-}
-.run-summary span {
-  font-size: 12px;
-  color: var(--muted);
-}
-.run-model {
-  font-size: 12px;
-  color: var(--muted);
-  overflow-wrap: anywhere;
-  margin-bottom: 16px;
-}
-.finding {
-  border-left: 2px solid var(--good);
-  padding-left: 14px;
-}
-.finding h4 {
-  font-size: 12px;
-  color: var(--muted);
-  font-weight: 500;
-  margin: 14px 0 5px;
-}
-.finding h4:first-child {
-  margin-top: 0;
-}
-.finding p,
-.finding li {
-  font-size: 13px;
-  line-height: 1.75;
-  overflow-wrap: anywhere;
-}
-.finding ul {
-  padding-left: 16px;
-  margin: 0;
-}
-.finding .references {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 5px;
 }
 .reference {
   max-width: 100%;
@@ -725,45 +525,6 @@ canvas {
   font-weight: 500;
   color: var(--ink);
 }
-.contracts-body {
-  padding: 18px;
-}
-.contract-entry + .contract-entry {
-  border-top: 1px solid var(--line);
-  padding-top: 18px;
-  margin-top: 18px;
-}
-.contract-entry h3 {
-  font-size: 15px;
-  margin-bottom: 8px;
-}
-.contract-entry p {
-  font-size: 12px;
-  color: var(--muted);
-  margin-bottom: 12px;
-}
-.contract-rule {
-  background: #0b0d10;
-  padding: 12px;
-  border: 1px solid var(--line);
-  border-radius: 4px;
-  margin-top: 10px;
-  font-size: 13px;
-}
-.contract-rule dl {
-  display: grid;
-  grid-template-columns: 140px 1fr;
-  gap: 6px;
-  margin: 10px 0 0;
-  font-size: 12px;
-}
-.contract-rule dt {
-  font-weight: 400;
-  color: var(--muted);
-}
-.contract-rule dd {
-  margin: 0;
-}
 .notification {
   position: fixed;
   bottom: 24px;
@@ -848,9 +609,6 @@ dialog::backdrop {
   .topbar {
     padding: 0 18px;
   }
-  .detail-columns {
-    grid-template-columns: 1fr;
-  }
   .model-label {
     max-width: 230px;
   }
@@ -911,9 +669,6 @@ dialog::backdrop {
   .topbar-actions {
     gap: 6px;
   }
-  .live-indicator {
-    font-size: 12px;
-  }
   main {
     padding: 16px 12px;
   }
@@ -954,11 +709,6 @@ dialog::backdrop {
   }
   .metric small {
     font-size: 12px;
-  }
-  .charts {
-    grid-template-columns: 1fr;
-    gap: 9px;
-    margin-bottom: 16px;
   }
   .incident-detail {
     padding: 16px;

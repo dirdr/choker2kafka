@@ -75,7 +75,7 @@ Eligible-memory retrieval and capture remain part of the later investigation/mem
 - [x] Validate run SQL, retry isolation and append-only tool activity in embedded PostgreSQL.
 - [ ] Redeploy and verify a live incident progresses from queued to a recorded finding with actual tool activity.
 - [x] Persist investigations, tool activity, findings, failures and usage.
-- [x] Enforce ten tool calls, a token allowance and a 45-second deadline.
+- [x] Enforce ten tool calls and configurable per-attempt tokens/deadline; defaults are 50000 tokens and 120 seconds.
 - [x] Validate evidence references and abstain when attribution is unsupported.
 
 ## 5. Policy-controlled remediation and recovery — pending
@@ -129,7 +129,8 @@ Keep `DATABASE_URL`, `KAFKA_BOOTSTRAP_SERVERS`, `KAFKA_SECURITY_PROTOCOL`, `KAFK
 | `DETECTION_ENABLED` | `true` | Set to `false` to disable detection independently of ingestion |
 | `INVESTIGATION_ENABLED` | `true` | Disable automatic model investigations independently of detection |
 | `ANTHROPIC_MODEL` | `claude-haiku-4-5-20251001` | Claude model for new attempts; recorded per run |
-| `INVESTIGATION_TOKEN_LIMIT` | `20000` | Per-attempt token budget, 4000–100000; includes a 1500-token output reserve |
+| `INVESTIGATION_TOKEN_LIMIT` | `50000` | Per-attempt token budget, 4000–100000; includes a 3000-token output reserve |
+| `INVESTIGATION_DEADLINE_SECONDS` | `120` | Per-attempt deadline in seconds, 30–300; saved with each attempt |
 | `CODE_VERSION` | `0.1.0` | Producer build identifier recorded in events |
 | `OPERATOR_TOKEN` | unset | Required for configuration mutation; reads and streaming work without it |
 
@@ -163,7 +164,7 @@ The patch body contains `expected_revision`, `event_time_unit` and `reason`. Use
 
 Run tests with `uv run python -m unittest discover -s tests -v`. Set `TEST_DATABASE_URL` to a dedicated TLS-enabled PostgreSQL test database to include integration tests; those tests apply migrations, change test producer configuration and retain append-only evidence. They are skipped when that variable is absent. Do not point the integration suite at the running demo database.
 
-Current local result: 97 unit/API tests passed; twenty-two network integration tests are skipped without `TEST_DATABASE_URL`. Those twenty-two repository test cases also passed against isolated embedded PostgreSQL through a temporary test adapter, validating migrations, SQL, transactions, deduplication, restart identity and evidence immutability. This does not validate psycopg/TLS/network behavior against Aiven. The native PostgreSQL test server was blocked by sandbox shared-memory permissions. Lint, formatting and lockfile checks passed.
+Current local result: 102 unit/API tests passed; twenty-three network integration tests are skipped without `TEST_DATABASE_URL`. Those twenty-three repository test cases also passed against isolated embedded PostgreSQL through a temporary test adapter, validating migrations, SQL, transactions, deduplication, restart identity and evidence immutability. This does not validate psycopg/TLS/network behavior against Aiven. The native PostgreSQL test server was blocked by sandbox shared-memory permissions. Lint, formatting and lockfile checks passed.
 
 See [the architecture views](docs/architecture/index.md), [the table inventory](docs/architecture/data-model.md) and [contract definitions/live verification](docs/contracts.md). The next implementation slice is proposal/approval policy and deterministic recovery after live investigation verification.
 
@@ -196,3 +197,9 @@ The next repair slice is specified in [the producer PR workflow](docs/producer-r
 - [ ] Implement a constrained producer repair PR, followed by merge/deployment and verified recovery.
 
 The retry endpoint already accepts failed attempts on open incidents. The dashboard displays attempts but remains read-only. Model selection currently uses `ANTHROPIC_MODEL` in Runtime environment settings and requires an application restart or redeployment; a dashboard model selector is not implemented.
+
+- [x] Increase investigation defaults and allow authenticated per-retry budget overrides without redeployment.
+- [x] Save each attempt's deadline and respect it when recovering abandoned runs.
+- [x] Reduce incident details to findings, compact context and grouped tool-call rows; expand supporting evidence and diagnostics on demand.
+- [x] Use contract-neutral stream labels and metadata, simplify contract rows, and remove the permanent live badge.
+- [x] Bound browser requests to twelve seconds so stalled requests cannot suspend polling indefinitely.

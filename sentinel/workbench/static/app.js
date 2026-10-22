@@ -2,13 +2,10 @@ import { api } from "./api.js";
 import {
   escapeHTML as esc,
   formatTime,
-  rawInteger,
-  percent,
   duration,
   statusClass,
   label,
 } from "./format.js";
-import { drawChart } from "./charts.js";
 
 const byId = (id) => document.getElementById(id);
 const state = {
@@ -17,14 +14,13 @@ const state = {
     : { "/stream": "stream", "/contracts": "contracts" }[location.pathname] ||
       "incidents",
   incidents: [],
-  configuration: null,
   contracts: [],
   selected: document.body.dataset.incidentId || null,
   incident: null,
   runs: [],
   run: null,
   chosenRun: null,
-  samples: [],
+  events: [],
   paused: false,
   errors: [],
   detailController: null,
@@ -58,137 +54,69 @@ function setText(id, value, className) {
   if (className !== undefined) element.className = className;
 }
 
-function chartRender() {
-  drawChart(byId("throughput-chart"), state.samples, "throughput", "#82c69b");
-  drawChart(byId("failure-chart"), state.samples, "failure", "#ed9b54", 100);
-  if (state.samples.length)
-    setText("chart-start", formatTime(state.samples[0].at, true));
-  setText("chart-samples", `${state.samples.length} samples in this tab`);
-}
-
-function renderConfiguration() {
-  const configuration = state.configuration;
-  byId("stream-configuration").innerHTML = configuration
-    ? `<span>Producer <strong>${esc(configuration.producer_id)}</strong></span><span>Unit <strong class="mono">${esc(configuration.event_time_unit)}</strong></span><span>Revision <strong class="mono">${esc(configuration.revision)}</strong></span>`
-    : "Configuration unavailable";
-}
-
 function renderIncidentList() {
   const filter = byId("incident-filter").value;
   const rows = state.incidents.filter(
     (row) => filter === "all" || row.status === filter,
   );
   const open = state.incidents.filter((row) => row.status === "open").length;
-  setText("metric-incidents", open);
   setText("nav-incident-count", open);
   setText("incident-list-meta", `${rows.length} shown · latest 20 records`);
   byId("incident-list").innerHTML = rows.length
-    ? `<div class="table-responsive"><table class="table incident-summary-table"><thead><tr><th>Incident</th><th>Summary</th><th>Investigation</th><th>Detected · UTC</th><th></th></tr></thead><tbody>${rows
-        .map((row) => {
-          const summary =
-            row.summary ||
-            (row.investigation_status === "failed"
-              ? "Investigation failed. Review its tool activity or retry."
-              : ["queued", "running"].includes(row.investigation_status)
-                ? "Investigation in progress. Live activity is available."
-                : "Contract violation captured. Waiting for investigation.");
-          return `<tr><td><a class="incident-link" href="/incidents/${esc(row.incident_id)}" data-incident="${esc(row.incident_id)}">${esc(row.rule_id)}</a><div class="row-meta">${esc(row.topic)} / ${esc(row.producer_id)}${row.configuration_revision ? ` · r${esc(row.configuration_revision)}` : ""} · ${esc(row.affected_fields.join(", "))}</div><div class="row-status">${badge(row.status)}<span class="mono">${esc(row.incident_id.slice(0, 8))}</span></div></td><td class="incident-summary"><p>${esc(summary)}</p><div class="row-meta">${esc(row.contract_id)} · v${esc(row.contract_version)}</div></td><td>${badge(row.investigation_status || "pending")}${row.model_id ? `<div class="row-meta mono">${esc(row.model_id)}</div>` : ""}</td><td class="mono incident-date">${esc(formatTime(row.opened_at))}</td><td><a class="text-button" href="/incidents/${esc(row.incident_id)}" data-incident="${esc(row.incident_id)}">Open</a></td></tr>`;
-        })
-        .join("")}</tbody></table></div>`
-    : empty(
-        "No incidents",
-        filter === "all"
-          ? "Captured contract violations will appear here."
-          : `No ${filter} incidents in the latest records.`,
-      );
+    ? `<div class="table-responsive"><table class="table incident-summary-table"><thead><tr><th>Incident</th><th>Stream / revision</th><th>Status</th><th>Finding</th><th>Detected · UTC</th></tr></thead><tbody>${rows.map((row) => {
+        const summary = row.summary || (row.investigation_status === "failed"
+          ? "Investigation failed" : ["queued", "running"].includes(row.investigation_status)
+            ? "Investigating…" : "Awaiting investigation");
+        return `<tr><td><a class="incident-link" href="/incidents/${esc(row.incident_id)}" data-incident="${esc(row.incident_id)}">${esc(row.rule_id)}</a></td><td><span>${esc(row.topic)} / ${esc(row.producer_id)}</span>${row.configuration_revision ? `<span class="row-revision mono">r${esc(row.configuration_revision)}</span>` : ""}</td><td>${badge(row.status)}</td><td class="incident-summary"><p>${esc(summary)}</p></td><td class="mono incident-date">${esc(formatTime(row.opened_at))}</td></tr>`;
+      }).join("")}</tbody></table></div>`
+    : empty("No incidents", filter === "all" ? "Contract violations will appear here." : `No ${filter} incidents.`);
 }
 
-function timelineMarkup(incident, run) {
-  const entries = [
-    {
-      kind: "detected",
-      at: incident.opened_at,
-      title: "Contract violation captured",
-      description: `${incident.contract_id} · v${incident.contract_version}`,
-      action:
-        '<button class="text-button" data-action="snapshot">Inspect frozen evidence</button>',
-    },
-  ];
+function activityMarkup(incident, run) {
+  const rows = [{ at: incident.opened_at, name: "Violation captured", status: "Recorded", result: '<button class="text-button" data-action="snapshot">Evidence</button>' }];
   if (run) {
-    entries.push({
-      kind: "started",
-      at: run.created_at,
-      title: "Investigation queued",
-      description: `${run.model_id} · ${run.agent_version}`,
-    });
+    rows.push({ at: run.created_at, name: "Investigation queued", status: "Recorded", result: "—" });
+    const calls = new Map();
     for (const activity of run.activity || []) {
-      const returned = activity.phase === "returned";
-      const count = activity.document_count;
-      entries.push({
-        kind: activity.phase,
-        at: activity.recorded_at,
-        title: `${activity.tool_name} ${returned ? "returned" : "started"}`,
-        description: returned
-          ? count == null
-            ? activity.result_status
-              ? label(activity.result_status)
-              : "Result recorded"
-            : `${count} evidence documents`
-          : "Reading captured evidence",
-        action: returned
-          ? `<button class="text-button" data-action="tool" data-activity="${esc(activity.activity_id)}">Inspect result</button>`
-          : "",
+      const key = activity.tool_call_id || activity.activity_id;
+      const call = calls.get(key) || { name: activity.tool_name, at: activity.recorded_at };
+      if (activity.phase === "returned") call.returned = activity;
+      calls.set(key, call);
+    }
+    for (const call of calls.values()) {
+      const result = call.returned;
+      rows.push({
+        at: call.at, name: call.name,
+        status: result ? "Returned" : run.status === "failed" ? "Interrupted" : "Running",
+        result: result ? `<button class="text-button" data-action="tool" data-activity="${esc(result.activity_id)}">${result.document_count == null ? esc(label(result.result_status || "Inspect result")) : `${esc(result.document_count)} documents`}</button>` : "—",
       });
     }
-    if (["completed", "failed"].includes(run.status))
-      entries.push({
-        kind: run.status === "failed" ? "failed" : "returned",
-        at: run.finished_at,
-        title:
-          run.status === "failed" ? "Investigation failed" : "Finding recorded",
-        description:
-          run.status === "failed"
-            ? run.error_detail?.message || label(run.error_code)
-            : "Evidence references validated",
-      });
+    if (["completed", "failed"].includes(run.status)) rows.push({ at: run.finished_at, name: run.status === "failed" ? "Investigation failed" : "Finding recorded", status: label(run.status), result: "—" });
   }
-  return entries
-    .map(
-      (entry) =>
-        `<li class="${esc(entry.kind)}"><h4>${esc(entry.title)}</h4><p>${esc(entry.description)}</p>${entry.action || ""}<time>${esc(formatTime(entry.at))}</time></li>`,
-    )
-    .join("");
+  return `<div class="table-responsive"><table class="table activity-table"><thead><tr><th>Time · UTC</th><th>Activity</th><th>Status</th><th>Evidence</th></tr></thead><tbody>${rows.map((row) => `<tr><td class="mono">${esc(formatTime(row.at, true))}</td><td>${esc(row.name)}</td><td>${esc(row.status)}</td><td>${row.result}</td></tr>`).join("")}</tbody></table></div>`;
 }
 
 function findingMarkup(finding) {
-  const consumers = finding.affected_consumers || [];
-  return `<div class="finding"><h4>Conclusion</h4><div>${badge(finding.conclusion)} <span class="muted">${esc(finding.confidence)} confidence</span></div><h4>Likely cause</h4><p>${esc(finding.likely_cause)}</p><h4>Alternative explanations</h4><ul>${(finding.alternatives || []).map((item) => `<li>${esc(item)}</li>`).join("")}</ul><h4>Declared consumer impact</h4><p>${consumers.length ? consumers.map(esc).join(", ") : "No affected consumers established"}</p>${finding.attribution ? `<h4>Attributed configuration</h4><p class="mono">${esc(finding.attribution.producer_id)} · revision ${esc(finding.attribution.configuration_revision)}</p>` : ""}<h4>Recommendation</h4><p>${esc(finding.recommendation)}</p><h4>Confidence rationale</h4><p>${esc(finding.confidence_rationale)}</p><h4>Evidence references</h4><div class="references">${(finding.evidence_ids || []).map((id) => `<button class="reference" title="${esc(id)}" data-action="reference" data-reference="${esc(id)}">${esc(id)}</button>`).join("")}</div></div>`;
+  return `<section class="finding"><div class="finding-verdict">${badge(finding.conclusion)}<span class="muted">${esc(finding.confidence)} confidence</span></div><div class="finding-primary"><div><h4>Likely cause</h4><p>${esc(finding.likely_cause)}</p></div><div><h4>Recommendation</h4><p>${esc(finding.recommendation)}</p></div></div><details id="finding-evidence" class="disclosure"><summary>Supporting evidence</summary><table class="table facts-table"><tbody><tr><th scope="row">Alternatives</th><td><ul>${(finding.alternatives || []).map((item) => `<li>${esc(item)}</li>`).join("")}</ul></td></tr><tr><th scope="row">Declared consumers</th><td>${(finding.affected_consumers || []).map(esc).join(", ") || "Not established"}</td></tr><tr><th scope="row">Attribution</th><td>${finding.attribution ? `${esc(finding.attribution.producer_id)} · r${esc(finding.attribution.configuration_revision)}` : "Not established"}</td></tr><tr><th scope="row">Confidence</th><td>${esc(finding.confidence_rationale)}</td></tr><tr><th scope="row">References</th><td><div class="references">${(finding.evidence_ids || []).map((id) => `<button class="reference" title="${esc(id)}" data-action="reference" data-reference="${esc(id)}">${esc(id)}</button>`).join("")}</div></td></tr></tbody></table></details></section>`;
 }
 
 function runMarkup(run) {
-  if (!run)
-    return empty(
-      "Waiting for investigation",
-      "The worker will queue this captured incident automatically.",
-    );
+  if (!run) return empty("Awaiting investigation", "The worker queues captured incidents automatically.");
   let result;
   if (run.status === "failed") {
-    result = `<div class="error-panel"><h4>${esc(label(run.error_code || "Investigation failed"))}</h4><p>${esc(run.error_detail?.message || "The model did not return a usable finding.")}</p>${run.error_detail?.fields ? `<ul>${run.error_detail.fields.map((field) => `<li><code>${esc(field.path)}</code>: ${esc(label(field.type))}</li>`).join("")}</ul>` : ""}<p class="mt-2">An operator can retry this investigation through the API.</p></div>`;
+    result = `<div class="error-panel"><h4>Investigation failed · ${esc(label(run.error_code || "Unknown error"))}</h4><p>${esc(run.error_detail?.message || "The model did not return a usable finding.")}</p></div>`;
   } else if (run.finding) result = findingMarkup(run.finding);
-  else
-    result = empty(
-      run.status === "queued" ? "Queued" : "Investigation running",
-      "Tool activity updates here as results are recorded.",
-    );
-  return `<select id="attempt-select" class="form-select form-select-sm attempt-select" aria-label="Investigation attempt">${state.runs.map((attempt, index) => `<option value="${esc(attempt.investigation_id)}" ${run.investigation_id === attempt.investigation_id ? "selected" : ""}>${index === 0 ? "Latest" : "Earlier"} · ${esc(label(attempt.status))} · ${esc(attempt.investigation_id.slice(0, 8))}</option>`).join("")}</select><div class="run-summary">${badge(run.status)}<span>${esc(duration(run.duration_ms))}</span><span>${esc(run.usage?.requests ?? 0)} model requests</span><span>${esc(run.usage?.tool_calls ?? 0)} tool calls</span><span>${esc(((run.usage?.input_tokens || 0) + (run.usage?.output_tokens || 0)).toLocaleString())} reported tokens</span></div><div class="run-model mono">${esc(run.model_id)}<br>${esc(run.agent_version)} · ${esc(run.token_limit.toLocaleString())} token allowance</div>${result}`;
+  else result = empty(run.status === "queued" ? "Queued" : "Investigating", "Tool results appear below as they arrive.");
+  const tokens = (run.usage?.input_tokens || 0) + (run.usage?.output_tokens || 0);
+  return `<div class="run-toolbar"><label for="attempt-select">Attempt</label><select id="attempt-select" class="form-select form-select-sm attempt-select" aria-label="Investigation attempt">${state.runs.map((attempt, index) => `<option value="${esc(attempt.investigation_id)}" ${run.investigation_id === attempt.investigation_id ? "selected" : ""}>${index === 0 ? "Latest" : "Earlier"} · ${esc(label(attempt.status))}</option>`).join("")}</select><span class="run-model mono">${esc(run.model_id)}</span>${badge(run.status)}</div>${result}<details id="run-diagnostics" class="disclosure"><summary>Execution details · ${esc(duration(run.duration_ms))}</summary><table class="table facts-table"><tbody><tr><th scope="row">Model / agent</th><td>${esc(run.model_id)} / ${esc(run.agent_version)}</td></tr><tr><th scope="row">Tokens reported / allowance</th><td class="mono">${esc(tokens.toLocaleString())} / ${esc(run.token_limit.toLocaleString())}</td></tr><tr><th scope="row">Deadline</th><td>${esc(run.deadline_seconds ?? 45)}s</td></tr><tr><th scope="row">Requests / tool calls</th><td>${esc(run.usage?.requests ?? 0)} / ${esc(run.usage?.tool_calls ?? 0)}</td></tr><tr><th scope="row">Run ID</th><td class="mono">${esc(run.investigation_id)}</td></tr>${run.error_detail?.fields ? `<tr><th scope="row">Validation errors</th><td>${run.error_detail.fields.map((field) => `${esc(field.path)}: ${esc(label(field.type))}`).join("<br>")}</td></tr>` : ""}</tbody></table></details>`;
 }
 
 function renderDetail() {
   const incident = state.incident;
   if (!incident || document.activeElement?.id === "attempt-select") return;
-  const metrics = incident.signal?.observed || {};
-  byId("incident-detail").innerHTML =
-    `<div class="detail-heading"><div><h2>${esc(incident.rule_id)}</h2><p class="mono">${esc(incident.incident_id)}</p></div>${badge(incident.status)}</div><div class="detail-metadata"><span>Topic <strong>${esc(incident.topic)}</strong></span><span>Producer <strong>${esc(incident.producer_id)}</strong></span>${incident.configuration_revision ? `<span>Revision <strong class="mono">${esc(incident.configuration_revision)}</strong></span>` : ""}<span>Contract <strong>${esc(incident.contract_id)} v${esc(incident.contract_version)}</strong></span><span>Fields <strong>${esc(incident.affected_fields.join(", "))}</strong></span>${typeof metrics.failure_ratio === "number" ? `<span>Captured failure <strong class="bad">${esc(percent(metrics.failure_ratio))}</strong></span>` : ""}</div><div class="detail-columns"><section><div class="section-heading"><h3>Activity timeline</h3><small>Recorded events · UTC</small></div><ol class="timeline">${timelineMarkup(incident, state.run)}</ol></section><section><div class="section-heading"><h3>Agent investigation</h3><button class="text-button" data-action="signal">View signal</button></div>${runMarkup(state.run)}</section></div>`;
+  const expanded = [...byId("incident-detail").querySelectorAll("details[open]")].map((element) => element.id);
+  byId("incident-detail").innerHTML = `<div class="detail-heading"><h2>${esc(incident.rule_id)}</h2>${badge(incident.status)}</div><div class="table-responsive"><table class="table incident-context"><thead><tr><th>Stream</th><th>Producer revision</th><th>Contract</th><th>Fields</th></tr></thead><tbody><tr><td>${esc(incident.topic)}</td><td>${esc(incident.producer_id)}${incident.configuration_revision ? ` · r${esc(incident.configuration_revision)}` : ""}</td><td>${esc(incident.contract_id)} v${esc(incident.contract_version)}</td><td>${esc(incident.affected_fields.join(", "))}</td></tr></tbody></table></div><section class="investigation-section"><div class="section-heading"><h3>Investigation</h3><button class="text-button" data-action="signal">Captured signal</button></div>${runMarkup(state.run)}</section><section class="activity-section"><div class="section-heading"><h3>Activity</h3><small>Recorded tool calls · UTC</small></div>${activityMarkup(incident, state.run)}</section>`;
+  for (const id of expanded) { const element = byId(id); if (element) element.open = true; }
   byId("attempt-select")?.addEventListener("change", (event) => {
     state.chosenRun = event.target.value;
     refreshDetail();
@@ -249,38 +177,19 @@ function selectIncident(id, updateHistory = true) {
 
 function renderContracts() {
   byId("contracts-body").innerHTML = state.contracts.length
-    ? state.contracts
-        .map(
-          (contract) =>
-            `<article class="contract-entry"><h3>${esc(contract.contract_id)} ${badge(`version ${contract.version}`)}</h3><p>${esc(contract.topic)} · Owner ${esc(contract.owner)} · Effective ${esc(formatTime(contract.effective_from))}</p>${contract.rules
-              .map(
-                (rule) =>
-                  `<div class="contract-rule"><strong>${esc(rule.rule_id)}</strong> <span class="muted mono">${esc(rule.kind)}</span><dl><dt>Fields</dt><dd class="mono">${esc(rule.fields.join(", "))}</dd>${Object.entries(
-                    rule.parameters,
-                  )
-                    .map(
-                      ([key, value]) =>
-                        `<dt>${esc(label(key))}</dt><dd class="mono">${esc(typeof value === "object" ? JSON.stringify(value) : value)}</dd>`,
-                    )
-                    .join("")}</dl></div>`,
-              )
-              .join("")}</article>`,
-        )
-        .join("")
-    : empty(
-        "No contract versions",
-        "The configured topic has no recorded contract versions.",
-      );
+    ? `<div class="table-responsive"><table class="table contracts-table"><thead><tr><th>Contract</th><th>Topic</th><th>Version</th><th>Rules</th></tr></thead><tbody>${state.contracts.map((contract) => `<tr><td>${esc(contract.contract_id)}</td><td>${esc(contract.topic)}</td><td class="mono">${esc(contract.version)}</td><td><details class="disclosure"><summary>${contract.rules.length} ${contract.rules.length === 1 ? "rule" : "rules"}</summary>${contract.rules.map((rule) => `<div class="contract-definition"><strong>${esc(rule.rule_id)}</strong><dl><dt>Type</dt><dd>${esc(rule.kind)}</dd><dt>Fields</dt><dd>${esc(rule.fields.join(", "))}</dd>${Object.entries(rule.parameters).map(([key, value]) => `<dt>${esc(label(key))}</dt><dd>${esc(typeof value === "object" ? JSON.stringify(value) : value)}</dd>`).join("")}</dl></div>`).join("")}</details></td></tr>`).join("")}</tbody></table></div>`
+    : empty("No contracts", "No contract versions recorded for this topic.");
 }
 
 async function refreshEvents() {
   try {
     const events = await api("/api/events?limit=20");
+    state.events = events;
     byId("events-body").innerHTML = events.length
       ? events
           .map(
             (event) =>
-              `<tr><td class="mono">${esc(formatTime(event.ingested_at))}</td><td class="mono">${esc(rawInteger(event.event_time))}</td><td class="mono">r${esc(event.config_revision)}</td><td class="mono">${esc(event.partition)} / ${esc(event.kafka_offset)}</td><td class="mono">${esc(event.event_id)}</td></tr>`,
+              `<tr><td class="mono">${esc(formatTime(event.ingested_at))}</td><td>${esc(event.topic || "—")}</td><td>${esc(event.producer_id || "—")} <span class="muted mono">r${esc(event.config_revision)}</span></td><td class="mono">${esc(event.partition)} / ${esc(event.kafka_offset)}</td><td><button class="text-button" data-event="${esc(event.event_id)}">Inspect</button></td></tr>`,
           )
           .join("")
       : '<tr><td colspan="5">No accepted events recorded.</td></tr>';
@@ -295,14 +204,12 @@ async function refreshOverview() {
     "/api/stream",
     "/api/detection",
     "/api/investigation",
-    "/api/producer/configuration",
     "/api/incidents?limit=20",
   ];
   const names = [
     "Stream",
     "Detection",
     "Investigation",
-    "Configuration",
     "Incidents",
   ];
   const results = await Promise.allSettled(
@@ -316,12 +223,10 @@ async function refreshOverview() {
       ? [`${names[index]}: ${result.reason.message}`]
       : [],
   );
-  const [stream, detection, investigator, configuration, incidents] = values;
-  let throughput = null,
-    failure = null;
+  const [stream, detection, investigator, incidents] = values;
   if (stream) {
-    throughput = stream.recent_events / 10;
-    setText("metric-throughput", throughput.toFixed(1), "mono");
+    setText("metric-throughput", (stream.recent_events / 10).toFixed(1), "mono");
+    setText("metric-rejected", stream.recent_rejections ?? "—", "mono");
     setText(
       "metric-transport",
       label(stream.transport),
@@ -333,23 +238,7 @@ async function refreshOverview() {
     );
   }
   if (detection) {
-    const results = detection.checks.map((check) => check.result);
-    const result =
-      results.find((check) => check.status === "violated") || results[0];
     setText("sidebar-topic", detection.topic);
-    if (result) {
-      const ratio = result.metrics?.failure_ratio;
-      failure = typeof ratio === "number" ? ratio * 100 : null;
-      setText(
-        "metric-failure",
-        ratio == null ? label(result.status) : percent(ratio),
-        `${statusClass(result.status)} mono`,
-      );
-      setText(
-        "metric-failure-detail",
-        `${label(result.status)} · ${result.recent_samples} recent samples`,
-      );
-    } else setText("metric-failure-detail", "No evaluation recorded yet");
   }
   if (investigator) {
     setText(
@@ -358,32 +247,20 @@ async function refreshOverview() {
     );
     setText(
       "agent-version",
-      `${investigator.agent_version || ""} · ${label(investigator.worker)}`,
+      `${(investigator.token_limit || 0).toLocaleString()} tokens · ${investigator.deadline_seconds}s · ${label(investigator.worker)}`,
     );
-  }
-  if (configuration) {
-    state.configuration = configuration;
-    renderConfiguration();
   }
   if (incidents) {
     state.incidents = incidents;
     renderIncidentList();
   }
-  state.samples.push({ at: Date.now(), throughput, failure });
-  if (state.samples.length > 60) state.samples.shift();
-  chartRender();
   const errors = byId("source-errors");
   errors.hidden = state.errors.length === 0;
   errors.textContent = `${state.errors.join(" · ")}${state.errors.length ? ". Last successful values remain visible." : ""}`;
   const ok = state.errors.length === 0;
   setText(
-    "poll-state",
-    state.paused ? "Paused" : ok ? "Live · 5s" : "Some sources unavailable",
-    !state.paused && ok ? "live-indicator" : "live-indicator paused",
-  );
-  setText(
     "last-updated",
-    `Last poll ${formatTime(Date.now(), true)} UTC${ok ? "" : " · partial update"}`,
+    `Updated ${formatTime(Date.now(), true)} UTC${ok ? "" : " · partial update"}`,
   );
 }
 
@@ -439,7 +316,7 @@ function showView(view) {
     {
       incidents: "Contract violations and investigation results.",
       detail: "Captured evidence and recorded agent activity.",
-      stream: "Transport, throughput and timestamp health.",
+      stream: "Ingestion and recent records.",
       contracts: "Versioned expectations for the stream.",
     }[view],
   );
@@ -456,7 +333,6 @@ function showView(view) {
   if (path && location.pathname !== path) history.pushState({}, "", path);
   if (view === "stream") {
     refreshEvents();
-    chartRender();
   }
   if (view === "contracts") loadContracts();
 }
@@ -548,28 +424,21 @@ document.addEventListener("click", (event) => {
   }
   const closer = event.target.closest("[data-close]");
   if (closer) byId(closer.dataset.close).close();
+  const record = event.target.closest("[data-event]");
+  if (record) {
+    const entry = state.events.find((item) => item.event_id === record.dataset.event);
+    if (entry) showEvidence("Event record", entry, "Stored stream record");
+  }
   const action = event.target.closest("[data-action]");
   if (action) inspectEvidence(action.dataset.action, action);
 });
 byId("incident-filter").addEventListener("change", renderIncidentList);
-byId("history-button").addEventListener("click", async () => {
-  try {
-    showEvidence(
-      "Producer configuration history",
-      await api("/api/producer/configuration/history"),
-      "Recorded revisions and operator changes",
-    );
-  } catch (error) {
-    notify(error.message, true);
-  }
-});
 byId("pause-button").addEventListener("click", () => {
   state.paused = !state.paused;
   clearTimeout(pollTimer);
   setText("pause-button", state.paused ? "Resume" : "Pause");
   byId("pause-button").setAttribute("aria-pressed", String(state.paused));
-  if (state.paused) setText("poll-state", "Paused", "live-indicator paused");
-  else tick();
+  if (!state.paused) tick();
 });
 document.addEventListener("visibilitychange", () => {
   clearTimeout(pollTimer);
@@ -586,7 +455,6 @@ window.addEventListener("popstate", () => {
         "incidents",
     );
 });
-window.addEventListener("resize", chartRender);
 window.addEventListener("pagehide", () => {
   clearTimeout(pollTimer);
   state.detailController?.abort();
