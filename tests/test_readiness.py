@@ -114,6 +114,29 @@ class ReadinessTests(unittest.TestCase):
                 self.assertEqual(config["ssl.ca.pem"], pem)
                 self.assertNotIn("ssl.ca.location", config)
 
+    def test_kafka_accepts_flattened_and_escaped_environment_certificates(self):
+        self.configure_kafka()
+        pem = "-----BEGIN CERTIFICATE-----\nYWJjZGVm\n-----END CERTIFICATE-----"
+        for value in (
+            pem,
+            pem.replace("\n", " "),
+            pem.replace("\n", "\\n"),
+            pem.replace("\n", "\\r\\n"),
+            pem.replace("\n", "\r\n"),
+            f'"{pem}"',
+        ):
+            with self.subTest(value=value):
+                os.environ["KAFKA_CA_CERT"] = value
+                self.assertEqual(readiness.kafka_configuration()["ssl.ca.pem"], pem)
+
+    def test_pem_normalization_preserves_certificate_chains(self):
+        first = "-----BEGIN CERTIFICATE----- YWJjZA== -----END CERTIFICATE-----"
+        second = "-----BEGIN CERTIFICATE----- ZWZnaA== -----END CERTIFICATE-----"
+        result = readiness.normalize_pem(f"{first}\n{second}")
+        self.assertEqual(result.count("-----BEGIN CERTIFICATE-----"), 2)
+        self.assertIn("\nYWJjZA==\n", result)
+        self.assertIn("\nZWZnaA==\n", result)
+
     def test_kafka_passes_environment_certificate_to_client(self):
         self.configure_kafka()
         os.environ.pop("KAFKA_SSL_CA_LOCATION", None)

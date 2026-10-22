@@ -1,7 +1,9 @@
 import asyncio
 import logging
 import os
+import re
 from pathlib import Path
+from textwrap import wrap
 from urllib.error import HTTPError, URLError
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 
@@ -28,6 +30,28 @@ def required(name: str) -> str:
     return value
 
 
+def normalize_pem(value: str) -> str:
+    value = value.strip()
+    if len(value) >= 2 and value[0] in {"'", '"'} and value[-1] == value[0]:
+        value = value[1:-1].strip()
+    value = value.replace("\\r\\n", "\n").replace("\\n", "\n").replace("\r\n", "\n")
+
+    def format_block(match: re.Match[str]) -> str:
+        label, body = match.groups()
+        encoded = "".join(body.split())
+        return (
+            f"-----BEGIN {label}-----\n"
+            + "\n".join(wrap(encoded, 64))
+            + f"\n-----END {label}-----"
+        )
+
+    return re.sub(
+        r"-----BEGIN ([A-Z0-9 ]+)-----([A-Za-z0-9+/=\s]+)-----END \1-----",
+        format_block,
+        value,
+    )
+
+
 def kafka_configuration() -> dict[str, str | int]:
     bootstrap = os.getenv("KAFKA_BOOTSTRAP_SERVERS") or required(
         "KAFKA_BOOTSTRAP_SERVER"
@@ -42,7 +66,7 @@ def kafka_configuration() -> dict[str, str | int]:
         "log_level": 0,
     }
     if certificate := os.getenv("KAFKA_CA_CERT", "").strip():
-        config["ssl.ca.pem"] = certificate.replace("\\n", "\n")
+        config["ssl.ca.pem"] = normalize_pem(certificate)
     elif location := os.getenv("KAFKA_SSL_CA_LOCATION"):
         path = Path(location)
         if not path.is_absolute():
@@ -59,10 +83,8 @@ def kafka_configuration() -> dict[str, str | int]:
         config["sasl.username"] = required("KAFKA_SASL_USERNAME")
         config["sasl.password"] = required("KAFKA_SASL_PASSWORD")
     else:
-        config["ssl.certificate.pem"] = required("KAFKA_ACCESS_CERT").replace(
-            "\\n", "\n"
-        )
-        config["ssl.key.pem"] = required("KAFKA_ACCESS_KEY").replace("\\n", "\n")
+        config["ssl.certificate.pem"] = normalize_pem(required("KAFKA_ACCESS_CERT"))
+        config["ssl.key.pem"] = normalize_pem(required("KAFKA_ACCESS_KEY"))
     return config
 
 
