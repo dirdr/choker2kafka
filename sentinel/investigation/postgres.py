@@ -3,7 +3,14 @@ from uuid import UUID, uuid4
 from psycopg import sql
 from psycopg.types.json import Jsonb
 
-from sentinel.investigation.settings import AGENT_VERSION, deadline_seconds
+from sentinel.investigation.settings import (
+    AGENT_VERSION,
+    SettingsChange,
+    SettingsConflict,
+    configured_model,
+    deadline_seconds,
+    token_limit,
+)
 from sentinel.stream.postgres import PostgresRepository
 
 
@@ -14,6 +21,49 @@ class InvestigationConflict(ValueError):
 class InvestigationRepository:
     def __init__(self, storage: PostgresRepository):
         self.storage = storage
+
+    def settings(self) -> dict:
+        with self.storage.connection() as connection:
+            row = connection.execute(
+                "SELECT revision, model_id, token_limit, updated_at FROM sentinel.investigator_settings WHERE singleton = true"
+            ).fetchone()
+        return row or {
+            "revision": 0,
+            "model_id": configured_model(),
+            "token_limit": token_limit(),
+            "updated_at": None,
+        }
+
+    def update_settings(self, change: SettingsChange) -> dict:
+        with self.storage.connection() as connection:
+            if change.expected_revision == 0:
+                row = connection.execute(
+                    """
+                    INSERT INTO sentinel.investigator_settings
+                        (singleton, revision, model_id, token_limit)
+                    VALUES (true, 1, %s, %s) ON CONFLICT DO NOTHING
+                    RETURNING revision, model_id, token_limit, updated_at
+                    """,
+                    (change.model_id, change.token_limit),
+                ).fetchone()
+            else:
+                row = connection.execute(
+                    """
+                    UPDATE sentinel.investigator_settings
+                    SET revision = revision + 1, model_id = %s, token_limit = %s,
+                        updated_at = clock_timestamp()
+                    WHERE singleton = true AND revision = %s
+                    RETURNING revision, model_id, token_limit, updated_at
+                    """,
+                    (change.model_id, change.token_limit, change.expected_revision),
+                ).fetchone()
+            if row is None:
+                raise SettingsConflict()
+            connection.execute(
+                "INSERT INTO sentinel.investigator_settings_history (revision, model_id, token_limit) VALUES (%s, %s, %s)",
+                (row["revision"], row["model_id"], row["token_limit"]),
+            )
+            return row
 
     def enqueue(
         self, model_id: str, token_limit: int, topic: str, deadline: int | None = None

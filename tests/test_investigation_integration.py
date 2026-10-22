@@ -11,6 +11,7 @@ from sentinel.investigation.postgres import (
     InvestigationConflict,
     InvestigationRepository,
 )
+from sentinel.investigation.settings import SettingsChange, SettingsConflict
 
 
 @unittest.skipUnless(
@@ -38,6 +39,34 @@ class InvestigationIntegrationTests(unittest.TestCase):
                 run = self.investigations.claim()
             self.investigations.finish(
                 run["investigation_id"], None, {}, 0, "test_cleanup"
+            )
+
+    def test_settings_persist_and_keep_existing_attempts_unchanged(self):
+        current = self.investigations.settings()
+        change = SettingsChange(
+            expected_revision=current["revision"],
+            model_id="claude-sonnet-4-6",
+            token_limit=80000,
+        )
+        saved = self.investigations.update_settings(change)
+        self.assertEqual(saved["revision"], current["revision"] + 1)
+        restarted = InvestigationRepository(self.storage)
+        self.assertEqual(restarted.settings(), saved)
+        with self.assertRaises(SettingsConflict):
+            restarted.update_settings(change)
+        original = restarted.detail(self.run["investigation_id"])
+        self.assertEqual(original["token_limit"], 20000)
+        self.assertEqual(original["model_id"], MODEL_ID)
+        with self.storage.connection() as connection:
+            history = connection.execute(
+                "SELECT * FROM sentinel.investigator_settings_history WHERE revision = %s",
+                (saved["revision"],),
+            ).fetchone()
+        self.assertEqual(history["model_id"], saved["model_id"])
+        with self.assertRaises(Error), self.storage.connection() as connection:
+            connection.execute(
+                "DELETE FROM sentinel.investigator_settings_history WHERE revision = %s",
+                (saved["revision"],),
             )
 
     def test_queue_and_terminal_results_are_idempotent(self):

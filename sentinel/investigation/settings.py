@@ -1,6 +1,8 @@
 import os
 import re
 
+from pydantic import BaseModel, ConfigDict, Field
+
 MODEL_ID = "claude-haiku-4-5-20251001"
 AGENT_VERSION = "investigator-v2"
 
@@ -24,3 +26,15 @@ def deadline_seconds() -> int:
     if not 30 <= value <= 300:
         raise ValueError("INVESTIGATION_DEADLINE_SECONDS must be between 30 and 300")
     return value
+
+
+class SettingsConflict(ValueError):
+    pass
+
+
+class SettingsChange(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    expected_revision: int = Field(ge=0, le=2**63 - 2, strict=True)
+    model_id: str = Field(pattern=r"^claude-[a-zA-Z0-9-]{1,120}$", strict=True)
+    token_limit: int = Field(ge=4000, le=100000, strict=True)

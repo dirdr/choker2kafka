@@ -12,9 +12,9 @@ from sentinel.investigation.postgres import (
 )
 from sentinel.investigation.settings import (
     AGENT_VERSION,
-    configured_model,
+    SettingsChange,
+    SettingsConflict,
     deadline_seconds,
-    token_limit,
 )
 from sentinel.stream.web import operator
 
@@ -32,23 +32,40 @@ Repository = Annotated[InvestigationRepository, Depends(repository)]
 
 
 @router.get("/investigation")
-def status(request: Request) -> dict:
+def status(request: Request, repository: Repository) -> dict:
     worker = getattr(request.app.state, "investigation_worker", None)
     state = worker.status() if worker else {"worker": "disabled", "last_error": None}
     try:
         return {
             **state,
             "provider": "anthropic",
-            "model_id": configured_model(),
+            **repository.settings(),
             "agent_version": AGENT_VERSION,
-            "token_limit": token_limit(),
             "tool_call_limit": 10,
             "deadline_seconds": deadline_seconds(),
         }
-    except ValueError:
+    except PostgresError, MissingConfiguration, ValueError:
         raise HTTPException(
             503, "Investigation model configuration is invalid"
         ) from None
+
+
+@router.get("/investigation/settings")
+def settings(repository: Repository) -> dict:
+    try:
+        return repository.settings()
+    except PostgresError, MissingConfiguration, ValueError:
+        raise HTTPException(503, "Investigator settings are unavailable") from None
+
+
+@router.patch("/investigation/settings", dependencies=[Depends(operator)])
+def update_settings(change: SettingsChange, repository: Repository) -> dict:
+    try:
+        return repository.update_settings(change)
+    except SettingsConflict:
+        raise HTTPException(409, "Settings changed; reload before saving") from None
+    except PostgresError, MissingConfiguration:
+        raise HTTPException(503, "Investigator settings are unavailable") from None
 
 
 @router.get("/incidents/{incident_id}/investigations")
@@ -96,10 +113,13 @@ def retry(
         raise HTTPException(503, "Investigation worker is disabled")
     try:
         options = budget or RetryBudget()
+        settings = repository.settings()
         result = repository.retry(
             incident_id,
-            configured_model(),
-            options.token_limit if options.token_limit is not None else token_limit(),
+            settings["model_id"],
+            options.token_limit
+            if options.token_limit is not None
+            else settings["token_limit"],
             options.deadline_seconds
             if options.deadline_seconds is not None
             else deadline_seconds(),

@@ -6,15 +6,8 @@ meta {
 
 post {
   url: {{base_url}}/api/incidents/{{incident_id}}/investigations/retry
-  body: json
+  body: none
   auth: bearer
-}
-
-body:json {
-  {
-    "token_limit": 50000,
-    "deadline_seconds": 120
-  }
 }
 
 auth:bearer {

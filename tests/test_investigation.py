@@ -368,6 +368,35 @@ class InvestigationAgentTests(unittest.IsolatedAsyncioTestCase):
 
 
 class InvestigationWorkerTests(unittest.TestCase):
+    def test_worker_reloads_persisted_settings_between_attempts(self):
+        repository = MagicMock()
+        repository.settings.side_effect = [
+            {"model_id": "claude-haiku-4-5-20251001", "token_limit": 50000},
+            {"model_id": "claude-sonnet-4-6", "token_limit": 80000},
+        ]
+        repository.claim.return_value = None
+        worker = InvestigationWorker(repository)
+        with (
+            patch.dict(
+                os.environ, {"ANTHROPIC_API_KEY": "test", "KAFKA_TOPIC": "test-topic"}
+            ),
+            patch.object(worker.stopping, "wait", side_effect=[None, None]) as wait,
+        ):
+
+            def stop_after_second_wait(seconds):
+                if wait.call_count == 2:
+                    worker.stop()
+
+            wait.side_effect = stop_after_second_wait
+            worker.run()
+        self.assertEqual(
+            [call.args for call in repository.enqueue.call_args_list],
+            [
+                ("claude-haiku-4-5-20251001", 50000, "test-topic"),
+                ("claude-sonnet-4-6", 80000, "test-topic"),
+            ],
+        )
+
     def test_failure_is_saved_without_exception_text_or_automatic_retry(self):
         repository = MagicMock()
         repository.evidence.side_effect = RuntimeError("secret key")
@@ -384,6 +413,11 @@ class InvestigationWorkerTests(unittest.TestCase):
 class InvestigationApiTests(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
         self.repository = MagicMock()
+        self.repository.settings.return_value = {
+            "revision": 0,
+            "model_id": "claude-sonnet-4-6",
+            "token_limit": 60000,
+        }
         app.state.investigation_repository = self.repository
         self.addCleanup(lambda: delattr(app.state, "investigation_repository"))
 

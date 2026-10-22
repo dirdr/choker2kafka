@@ -12,7 +12,6 @@ from sentinel.investigation.agent import investigate
 from sentinel.investigation.domain import CapturedEvidence
 from sentinel.investigation.errors import describe_failure
 from sentinel.investigation.postgres import InvestigationRepository
-from sentinel.investigation.settings import configured_model, token_limit
 
 logger = logging.getLogger(__name__)
 
@@ -73,12 +72,14 @@ class InvestigationWorker:
             while not self.stopping.is_set():
                 try:
                     required("ANTHROPIC_API_KEY")
-                    budget = token_limit()
                     if not self.initialized:
                         self.repository.storage.initialize()
                         self.initialized = True
+                    settings = self.repository.settings()
                     self.repository.enqueue(
-                        configured_model(), budget, os.getenv("KAFKA_TOPIC", "orders")
+                        settings["model_id"],
+                        settings["token_limit"],
+                        os.getenv("KAFKA_TOPIC", "orders"),
                     )
                     run = self.repository.claim()
                     self.set_state("running")

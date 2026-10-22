@@ -1,9 +1,12 @@
 import json
 
 
-async def raw_request(app, path, method="GET", body=None, token=None, query=b""):
+async def raw_request(
+    app, path, method="GET", body=None, token=None, query=b"", extra_headers=()
+):
     messages = []
     headers = [(b"content-type", b"application/json")]
+    headers.extend(extra_headers)
     if token:
         headers.append((b"authorization", f"Bearer {token}".encode()))
 
@@ -41,6 +44,10 @@ async def raw_request(app, path, method="GET", body=None, token=None, query=b"")
     )
 
 
-async def request(app, path, method="GET", body=None, token=None, query=b""):
-    status, _, content = await raw_request(app, path, method, body, token, query)
+async def request(
+    app, path, method="GET", body=None, token=None, query=b"", extra_headers=()
+):
+    status, _, content = await raw_request(
+        app, path, method, body, token, query, extra_headers
+    )
     return status, json.loads(content)

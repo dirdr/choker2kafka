@@ -19,6 +19,7 @@ from sentinel.stream.kafka import KafkaStream
 from sentinel.stream.postgres import PostgresRepository
 from sentinel.stream.service import StreamWorker
 from sentinel.stream.web import router as stream_router
+from sentinel.workbench.settings import router as workbench_settings_router
 from sentinel.workbench.web import ROOT as WORKBENCH_ROOT
 from sentinel.workbench.web import router as workbench_router
 
@@ -72,4 +73,5 @@ app.include_router(stream_router)
 app.include_router(detection_router)
 app.include_router(investigation_router)
 app.mount("/static", StaticFiles(directory=WORKBENCH_ROOT / "static"), name="static")
+app.include_router(workbench_settings_router)
 app.include_router(workbench_router)
