@@ -1,4 +1,4 @@
 {
   "producer_id": "checkout",
-  "event_time_unit": "milliseconds"
+  "event_time_unit": "seconds"
 }
