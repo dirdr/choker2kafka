@@ -4,6 +4,8 @@ import unittest
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
+import httpx2
+from anthropic import AsyncAnthropic
 from detection_fixtures import snapshot
 from pydantic_ai.messages import ModelResponse, ToolCallPart
 from pydantic_ai.models.function import FunctionModel
@@ -173,6 +175,74 @@ class InvestigationAgentTests(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual(usage.tool_calls, 2)
         self.assertEqual(usage.requests, 2)
+
+    async def test_default_anthropic_client_executes_tools_and_returns_a_finding(self):
+        source = evidence()
+        expected = finding(source)
+        inference_requests = 0
+        sdk_retries = []
+
+        def transport(request):
+            nonlocal inference_requests
+            if request.url.path.endswith("count_tokens"):
+                return httpx2.Response(200, json={"input_tokens": 100})
+            inference_requests += 1
+            content = (
+                [
+                    {
+                        "type": "tool_use",
+                        "id": "inspect",
+                        "name": "inspect_incident",
+                        "input": {},
+                    },
+                    {
+                        "type": "tool_use",
+                        "id": "context",
+                        "name": "lookup_producer_context",
+                        "input": {},
+                    },
+                ]
+                if inference_requests == 1
+                else [
+                    {
+                        "type": "tool_use",
+                        "id": "result",
+                        "name": "final_result",
+                        "input": expected.model_dump(mode="json"),
+                    }
+                ]
+            )
+            return httpx2.Response(
+                200,
+                json={
+                    "id": f"msg-{inference_requests}",
+                    "type": "message",
+                    "role": "assistant",
+                    "model": "claude-haiku-4-5-20251001",
+                    "content": content,
+                    "stop_reason": "tool_use",
+                    "stop_sequence": None,
+                    "usage": {"input_tokens": 100, "output_tokens": 50},
+                },
+            )
+
+        def client(**kwargs):
+            sdk_retries.append(kwargs["max_retries"])
+            return AsyncAnthropic(
+                **kwargs,
+                http_client=httpx2.AsyncClient(
+                    transport=httpx2.MockTransport(transport)
+                ),
+            )
+
+        with (
+            patch.dict(os.environ, {"ANTHROPIC_API_KEY": "test-only-key"}),
+            patch("sentinel.investigation.agent.AsyncAnthropic", side_effect=client),
+        ):
+            result = await investigate(source, MagicMock(), RunUsage(), 20000)
+        self.assertEqual(result, expected)
+        self.assertEqual(inference_requests, 2)
+        self.assertEqual(sdk_retries, [0])
 
     async def test_malformed_finding_gets_one_bounded_correction(self):
         source = evidence()

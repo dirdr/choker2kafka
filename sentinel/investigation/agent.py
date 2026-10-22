@@ -101,7 +101,7 @@ async def investigate(
             if model is None:
                 client = AsyncAnthropic(
                     api_key=required("ANTHROPIC_API_KEY"),
-                    max_retries={"tools": 0, "output": 1},
+                    max_retries=0,
                     timeout=20,
                 )
                 model = AnthropicModel(
