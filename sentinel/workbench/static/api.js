@@ -6,28 +6,32 @@ export class ApiError extends Error {
 }
 
 export async function api(path, { signal } = {}) {
-  const response = await fetch(path, {
-    method: "GET",
-    headers: { Accept: "application/json" },
-    signal,
-    cache: "no-store",
-    credentials: "omit",
-  });
-  let data;
+  const timeout = AbortSignal.timeout(12000);
+  const combined = signal ? AbortSignal.any([signal, timeout]) : timeout;
   try {
-    data = await response.json();
-  } catch {
-    throw new ApiError(
-      response.status,
-      "The server returned an unreadable response",
-    );
+    const response = await fetch(path, {
+      method: "GET",
+      headers: { Accept: "application/json" },
+      signal: combined,
+      cache: "no-store",
+      credentials: "omit",
+    });
+    let data;
+    try {
+      data = await response.json();
+    } catch (error) {
+      if (combined.aborted) throw error;
+      throw new ApiError(response.status, "The server returned an unreadable response");
+    }
+    if (!response.ok) {
+      const detail = typeof data.detail === "string"
+        ? data.detail.slice(0, 250) : "The request could not be completed";
+      throw new ApiError(response.status, `${detail} (${response.status})`);
+    }
+    return data;
+  } catch (error) {
+    if (timeout.aborted && !signal?.aborted)
+      throw new ApiError(0, "Request timed out; refresh will retry");
+    throw error;
   }
-  if (!response.ok) {
-    const detail =
-      typeof data.detail === "string"
-        ? data.detail.slice(0, 250)
-        : "The request could not be completed";
-    throw new ApiError(response.status, `${detail} (${response.status})`);
-  }
-  return data;
 }
