@@ -37,9 +37,11 @@ SENTINEL_BASE_URL=https://YOUR-RUNTIME-URL npm --prefix tools/browser run test:l
 
 Screenshots go to `tools/browser/test-results`. Fixture screenshots represent test data. Live mode reads the real deployment and makes no configuration changes or investigation retries.
 
-Local verification passed 102 unit/API tests and a DOM interaction check covering summary-first navigation, separate detail/stream/contract views, on-demand evidence, read-only requests and model-output escaping. Twenty-three PostgreSQL integration cases remain separately validated through the embedded database adapter. Chromium launch was blocked by the sandbox's macOS process-service restriction; desktop/mobile Playwright execution and screenshots remain to be verified outside that restriction.
+Local verification passed 123 unit/API tests and a DOM interaction check covering summary-first navigation, separate detail/stream/contract views, on-demand evidence, read-only requests and model-output escaping. Thirty-one PostgreSQL integration cases remain separately validated through the embedded database adapter. Chromium launch was blocked by the sandbox's macOS process-service restriction; desktop/mobile Playwright execution and screenshots remain to be verified outside that restriction.
 
 
 The primary incident view shows cause and recommendation, followed by one activity row per tool call. Supporting evidence and execution diagnostics are collapsed and retain their expanded state during polling. Contract rows show only name, topic, version and rule count; expanding the count reveals recorded definitions. The stream table uses ingestion metadata and record inspection rather than a fixed timestamp field. Status warnings appear on failed reads; there is no permanent live badge.
 
 Open **Investigator settings**, choose a model and token allowance, and save. PostgreSQL retains the selection across deployments. New original investigations and retries use saved defaults. Existing queued, running and completed attempts retain their recorded model and budget. The catalog comes from Anthropic; a catalog outage preserves the current model and allows budget changes.
+
+The Producers view at `/producers` shows configuration provenance and GitHub links. Incident details include public tool purposes and result summaries, evidence-linked checks, repair PR status and recovery proof. These recorded explanations are not private model chain-of-thought. The deployed happy path is confirmed on revision 7 → PR #1 → revision 8 → resolved.

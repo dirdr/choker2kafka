@@ -10,7 +10,7 @@ Sentinel connects the contract breach to the producer change and helps the team 
 
 ## 0:20–0:40 · Start healthy
 
-Here is our producer and its configuration in GitHub. It currently emits timestamps in milliseconds, as the contract expects. Events are flowing, and there are no open incidents.
+Here is our producer and its configuration in GitHub. It currently emits timestamps in milliseconds, as the contract expects. Events are flowing, and the producer meets its contract.
 
 The producer revision and source commit tell us which configuration produced each event.
 

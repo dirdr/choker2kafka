@@ -14,4 +14,4 @@ For data platform teams and SREs who need trustworthy streams without manual inc
 
 **Evidence:** An integer type check accepts the faulty timestamp. Sentinel identifies the contract breach and verifies two fresh passing windows after the repair.
 
-**Measured demo:** detection **[fill]** · investigation **[fill]** · tokens **[fill]** · verified recovery **[fill]**
+**Measured demo:** detection **11.7s** · investigation **31.5s** · reported tokens **14,829** · verified recovery **34.7s**

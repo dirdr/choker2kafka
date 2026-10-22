@@ -73,20 +73,20 @@ Eligible-memory retrieval and capture remain part of the later investigation/mem
 - [x] Configure the Claude model through `ANTHROPIC_MODEL` and expose configured/actual model metadata.
 - [x] Observe deployed tool calls and a saved failure; reproduce and fix malformed output using the real captured incident.
 - [x] Validate run SQL, retry isolation and append-only tool activity in embedded PostgreSQL.
-- [ ] Redeploy and verify a live incident progresses from queued to a recorded finding with actual tool activity.
+- [x] Verify a deployed incident reaches a supported finding with actual tool activity (revision 7, Sonnet, 2026-10-22).
 - [x] Persist investigations, tool activity, findings, failures and usage.
 - [x] Enforce ten tool calls and configurable per-attempt tokens/deadline; defaults are 50000 tokens and 120 seconds.
 - [x] Validate evidence references and abstain when attribution is unsupported.
 
-## 5. Policy-controlled remediation and recovery — pending
+## 5. PR remediation and recovery — implemented; policy modes and memory pending
 
-- [ ] Persist exact proposals with evidence and expected contract/configuration revisions.
+- [x] Persist exact producer repair proposals with evidence and expected contract/configuration revisions.
 - [ ] Validate writable targets and fields; preview serialization against the captured contract.
 - [ ] Default to Approval required; persist approvals, rejections and mode changes.
 - [ ] Execute authorized proposals through one revision-checked, idempotent path.
 - [ ] Prevent mode changes from silently executing pending proposals.
-- [ ] Require two passing, fresh, non-overlapping ten-second recovery windows from the repaired revision.
-- [ ] Persist recovery evidence before resolving an incident.
+- [x] Require two passing, fresh, non-overlapping ten-second recovery windows from the repaired revision.
+- [x] Persist recovery evidence before resolving an incident; verified on deployed PR #1.
 - [ ] Retrieve only reviewed or verified, compatible, unexpired incident memory.
 
 ## 6. Workbench and re-investigation — workbench implemented; deployed verification pending
@@ -164,7 +164,7 @@ The patch body contains `expected_revision`, `event_time_unit` and `reason`. Use
 
 Run tests with `uv run python -m unittest discover -s tests -v`. Set `TEST_DATABASE_URL` to a dedicated TLS-enabled PostgreSQL test database to include integration tests; those tests apply migrations, change test producer configuration and retain append-only evidence. They are skipped when that variable is absent. Do not point the integration suite at the running demo database.
 
-Current local result: 102 unit/API tests passed; twenty-three network integration tests are skipped without `TEST_DATABASE_URL`. Those twenty-three repository test cases also passed against isolated embedded PostgreSQL through a temporary test adapter, validating migrations, SQL, transactions, deduplication, restart identity and evidence immutability. This does not validate psycopg/TLS/network behavior against Aiven. The native PostgreSQL test server was blocked by sandbox shared-memory permissions. Lint, formatting and lockfile checks passed.
+Current local result: 123 unit/API tests passed; thirty-one network integration tests are skipped without `TEST_DATABASE_URL`. Those thirty-one repository test cases also passed against isolated embedded PostgreSQL through a temporary test adapter, validating migrations, SQL, transactions, deduplication, restart identity and evidence immutability. This does not validate psycopg/TLS/network behavior against Aiven. The native PostgreSQL test server was blocked by sandbox shared-memory permissions. Lint, formatting and lockfile checks passed.
 
 See [the architecture views](docs/architecture/index.md), [the table inventory](docs/architecture/data-model.md) and [contract definitions/live verification](docs/contracts.md). The next implementation slice is proposal/approval policy and deterministic recovery after live investigation verification.
 
@@ -181,7 +181,7 @@ The workbench is available at `/` after redeployment, with direct incident links
 - [x] Move stream graphs to `/stream` and contract definitions to `/contracts`.
 - [x] Make the workbench read-only; use Bruno/API for producer changes and paid retries.
 - [ ] Add true isolated replay with fresh model calls; historical tool activity is already visible.
-- [ ] Implement the agreed producer-config PR workflow and resolve only after merge/deployment and fresh recovery proof.
+- [x] Implement the agreed producer-config PR workflow and resolve only after merge, source synchronization and fresh recovery proof.
 
 - [x] Darken the workbench and increase text sizes with a self-hosted Inter font.
 
@@ -190,11 +190,11 @@ The next repair slice is specified in [the producer PR workflow](docs/producer-r
 ## Demo readiness — next steps
 
 - [x] Fix the default Anthropic SDK client retry argument and cover the production client path with a regression test.
-- [ ] Redeploy the SDK fix, retry the existing failed incident through Bruno, and verify a persisted finding on the workbench.
-- [ ] Preserve one verified demo incident and its frozen evidence; defer historical cleanup until that example succeeds.
+- [x] Verify a persisted supported finding on the deployment using the Git-backed demo incident.
+- [x] Preserve the verified revision-7 demo incident and export its evidence before historical cleanup.
 - [ ] Add isolated replay for successful attempts, with fresh model calls and no producer writes.
-- [ ] Add versioned producer configuration and deployment synchronization; producer changes currently use the database API.
-- [ ] Implement a constrained producer repair PR, followed by merge/deployment and verified recovery.
+- [x] Add versioned producer configuration and GitHub synchronization without redeployment.
+- [x] Implement and verify a constrained producer repair PR followed by merge, synchronization and recovery.
 
 The retry endpoint already accepts failed attempts on open incidents. The dashboard displays attempts but remains read-only. Model selection currently uses `ANTHROPIC_MODEL` in Runtime environment settings and requires an application restart or redeployment; a dashboard model selector is not implemented.
 
@@ -205,3 +205,18 @@ The retry endpoint already accepts failed attempts on open incidents. The dashbo
 - [x] Bound browser requests to twelve seconds so stalled requests cannot suspend polling indefinitely.
 
 The active demo implementation order is tracked in [the demo delivery plan](docs/demo-delivery.md).
+
+## Verified demo and submission evidence
+
+- [x] Watch GitHub producer configuration and apply changed files as new revisions without redeployment.
+- [x] Display producer configuration, revision, source commit and GitHub links.
+- [x] Display public tool purposes, recorded result summaries and evidence-linked finding checks.
+- [x] Open a constrained, idempotent repair PR automatically for a supported Git-managed fault.
+- [x] Observe a real PR merge and resolve incident `3f879fa2-bea9-45ec-840e-3a3612d55e7c` only after two fresh 100-event windows pass on revision 8.
+- [x] Generate the two-page evidence PDF and retain its recorded metrics in `artifacts/evidence`.
+- [x] Add the Obsidian slide and three-minute demo narration.
+- [x] Add a read-only Playwright evidence exporter and measurement validation tests.
+- [ ] Run the Playwright screenshot/PDF exporter outside the sandbox browser restriction.
+- [ ] Apply the requested clean reset by setting a new `DEMO_RESET_ID` and redeploying with a healthy configuration; no reset receipt exists on the current deployment.
+
+Recorded run: detection 11.684s, investigation 31.521s, 14,829 reported tokens, recovery 34.670s from applying the repaired revision. Baseline: 100/100 captured faulty samples pass the integer-type check while the recorded contract failure ratio is 100%. This is a single synthetic run, not a production latency benchmark. Three historical incidents remain open; the successful demo record is preserved for evidence.

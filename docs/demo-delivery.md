@@ -6,14 +6,15 @@ The demo starts with a Git commit to the producer configuration. Sentinel applie
 
 - [x] Persist investigator model and token settings; apply them to new attempts.
 - [x] Add the settings dialog and a consistent minimalist dark interface.
-- [ ] Add `producer/config.json`, source provenance and GitHub synchronization.
-- [ ] Show producer revision, configuration, source commit and GitHub links.
-- [ ] Record short investigation explanations next to tool calls and results.
-- [ ] Validate and persist a repair proposal against captured evidence and current source.
-- [ ] Create one repair PR per proposal and persist its identity.
-- [ ] Apply the merged file through synchronization and verify two fresh recovery windows.
-- [ ] Reset demo records safely while excluding retained Kafka messages from the next run.
-- [ ] Verify the deployed happy path and record a backup demo.
+- [x] Add `producer/config.json`, source provenance and GitHub synchronization.
+- [x] Show producer revision, configuration, source commit and GitHub links.
+- [x] Record short investigation explanations next to tool calls and results.
+- [x] Validate and persist a repair proposal against captured evidence and current source.
+- [x] Implement idempotent repair PR creation and persist its identity; real GitHub verification remains pending.
+- [x] Implement merged-file synchronization and two-window recovery; verify on the deployment next.
+- [x] Implement one-time startup reset with durable Kafka ingestion boundaries; deployed reset remains pending.
+- [x] Verify the deployed happy path: revision 7 → supported finding → PR #1 → merged revision 8 → two passing recovery windows → resolved.
+- [ ] Record the backup MP4 and verify the clean-start reset on the deployment.
 
 ## Runtime configuration
 
@@ -24,3 +25,9 @@ Model and allowance changes are saved in PostgreSQL. Environment variables suppl
 Investigation explanations are concise, evidence-linked summaries of checks and results. They do not expose private chain-of-thought. Tool results remain inspectable.
 
 A PR is a proposed repair. The incident remains open until the repaired revision produces fresh events that pass the captured contract. Opening a PR alone does not count as resolution.
+
+## Clean deployment
+
+Set `DEMO_RESET_ID=demo-2026-10-22-1` for the requested clean run, keep the producer file healthy, and deploy the latest commit. Reset runs before workers start. It clears demo stream, incident, investigation, repair and contract records; preserves application settings and reset receipts; restores the healthy producer baseline; and rejects retained Kafka offsets through database triggers. Reusing the same reset ID on later deployments does not delete the next run. A new reset ID requests another reset. Existing open repair PRs must be closed or merged first.
+
+Check `/api/demo` for the reset receipt and open-incident count, `/api/producers` for source sync, and `/api/repair` for the repair worker. See [the narration](demo-script.md), [the pitch slide](submission-slide.md), and [the evidence exporter](evidence-export.md).
