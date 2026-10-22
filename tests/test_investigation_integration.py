@@ -58,12 +58,27 @@ class InvestigationIntegrationTests(unittest.TestCase):
 
     def test_failed_run_retry_appends_and_reuses_snapshot(self):
         run_id = self.run["investigation_id"]
-        self.investigations.finish(run_id, None, {"requests": 1}, 12, "TimeoutError")
-        retry = self.investigations.retry(self.incident["incident_id"], MODEL_ID, 20000)
+        self.investigations.finish(
+            run_id,
+            None,
+            {"requests": 1},
+            12,
+            "deadline_exceeded",
+            error_detail={"message": "Deadline reached"},
+        )
+        retry = self.investigations.retry(
+            self.incident["incident_id"], "claude-sonnet-4-6", 20000
+        )
         self.assertNotEqual(retry["investigation_id"], run_id)
         self.assertEqual(retry["snapshot_id"], self.run["snapshot_id"])
+        self.assertEqual(retry["model_id"], "claude-sonnet-4-6")
+        self.assertEqual(self.investigations.detail(run_id)["model_id"], MODEL_ID)
         self.assertEqual(
-            self.investigations.detail(run_id)["error_code"], "TimeoutError"
+            self.investigations.detail(run_id)["error_detail"],
+            {"message": "Deadline reached"},
+        )
+        self.assertEqual(
+            self.investigations.detail(run_id)["error_code"], "deadline_exceeded"
         )
         with self.assertRaises(InvestigationConflict):
             self.investigations.retry(self.incident["incident_id"], MODEL_ID, 20000)
@@ -98,6 +113,14 @@ class InvestigationIntegrationTests(unittest.TestCase):
             {"snapshot_id": str(self.run["snapshot_id"])},
         )
         self.assertEqual(len(self.investigations.detail(run_id)["activity"]), 2)
+        compact = self.investigations.detail(run_id)
+        full = self.investigations.detail(run_id, include_activity_bodies=True)
+        self.assertNotIn("body", compact["activity"][1])
+        self.assertIn("body", full["activity"][1])
+        self.assertEqual(
+            full["activity"][1]["body"]["snapshot_id"], str(self.run["snapshot_id"])
+        )
+
         with self.assertRaises(Error), self.storage.connection() as connection:
             connection.execute(
                 "DELETE FROM sentinel.investigation_activity WHERE investigation_id = %s",

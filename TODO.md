@@ -53,7 +53,8 @@ The operator confirmed the basic round trip and authorized the detection slice. 
 - [x] Test pure rules, API validation and lifecycle; validate repository SQL in isolated embedded PostgreSQL.
 - [x] Document architecture, database records, contract definitions and live verification.
 - [x] Add a Bruno collection with Local/Aiven environments, read checks, frozen-evidence reads and revision-aware producer controls.
-- [ ] Redeploy; verify a healthy baseline and an automatically captured seconds/microseconds violation.
+- [x] Verify a deployed healthy baseline and automatically captured seconds violation.
+- [ ] Verify a live microseconds violation separately.
 - [ ] Verify repeated bad windows and a restart retain one active incident and its original evidence.
 - [ ] Verify a live unit restoration changes new checks without rewriting the incident snapshot.
 - [ ] Verify stale transport suppresses new incidents on the deployed stack.
@@ -67,6 +68,10 @@ Eligible-memory retrieval and capture remain part of the later investigation/mem
 - [ ] Implement reviewed eligible-memory retrieval and capture.
 - [x] Queue original investigations automatically and preserve failures across restarts; protect explicit retries with operator authentication.
 - [x] Persist tool starts/results during execution so the workbench can poll live activity.
+- [x] Keep live polling compact; allow explicit access to raw tool bodies.
+- [x] Require strict structured output, allow one bounded correction and save safe validation details.
+- [x] Configure the Claude model through `ANTHROPIC_MODEL` and expose configured/actual model metadata.
+- [x] Observe deployed tool calls and a saved failure; reproduce and fix malformed output using the real captured incident.
 - [x] Validate run SQL, retry isolation and append-only tool activity in embedded PostgreSQL.
 - [ ] Redeploy and verify a live incident progresses from queued to a recorded finding with actual tool activity.
 - [x] Persist investigations, tool activity, findings, failures and usage.
@@ -88,6 +93,7 @@ Eligible-memory retrieval and capture remain part of the later investigation/mem
 
 - [ ] Serve pinned Tabler assets, Jinja templates and polling handlers from this application.
 - [ ] Show incidents, evidence, findings, configuration diffs, decisions and recovery history.
+- [ ] Display the configured model and each run's actual model, with an authenticated model selector if time permits.
 - [ ] Display tool starts/results live during original investigations and re-investigations, with status, elapsed time and evidence-backed LLM explanations; use fresh model calls for re-investigation and do not expose private chain-of-thought.
 - [ ] Provide operator approval/rejection controls and safe timestamp rendering.
 - [ ] Re-investigate resolved incidents from captured source context in a separate run.
@@ -115,6 +121,7 @@ Keep `DATABASE_URL`, `KAFKA_BOOTSTRAP_SERVERS`, `KAFKA_SECURITY_PROTOCOL`, `KAFK
 | `STREAM_ENABLED` | `true` | Set to `false` to disable the stream worker |
 | `DETECTION_ENABLED` | `true` | Set to `false` to disable detection independently of ingestion |
 | `INVESTIGATION_ENABLED` | `true` | Disable automatic model investigations independently of detection |
+| `ANTHROPIC_MODEL` | `claude-haiku-4-5-20251001` | Claude model for new attempts; recorded per run |
 | `INVESTIGATION_TOKEN_LIMIT` | `20000` | Per-attempt token budget, 4000–100000; includes a 1500-token output reserve |
 | `CODE_VERSION` | `0.1.0` | Producer build identifier recorded in events |
 | `OPERATOR_TOKEN` | unset | Required for configuration mutation; reads and streaming work without it |
@@ -149,8 +156,10 @@ The patch body contains `expected_revision`, `event_time_unit` and `reason`. Use
 
 Run tests with `uv run python -m unittest discover -s tests -v`. Set `TEST_DATABASE_URL` to a dedicated TLS-enabled PostgreSQL test database to include integration tests; those tests apply migrations, change test producer configuration and retain append-only evidence. They are skipped when that variable is absent. Do not point the integration suite at the running demo database.
 
-Current local result: 81 unit/API tests passed; nineteen network integration tests are skipped without `TEST_DATABASE_URL`. Those nineteen repository test cases also passed against isolated embedded PostgreSQL through a temporary test adapter, validating migrations, SQL, transactions, deduplication, restart identity and evidence immutability. This does not validate psycopg/TLS/network behavior against Aiven. The native PostgreSQL test server was blocked by sandbox shared-memory permissions. Lint, formatting and lockfile checks passed.
+Current local result: 86 unit/API tests passed; nineteen network integration tests are skipped without `TEST_DATABASE_URL`. Those nineteen repository test cases also passed against isolated embedded PostgreSQL through a temporary test adapter, validating migrations, SQL, transactions, deduplication, restart identity and evidence immutability. This does not validate psycopg/TLS/network behavior against Aiven. The native PostgreSQL test server was blocked by sandbox shared-memory permissions. Lint, formatting and lockfile checks passed.
 
 See [the architecture views](docs/architecture/index.md), [the table inventory](docs/architecture/data-model.md) and [contract definitions/live verification](docs/contracts.md). The next implementation slice is proposal/approval policy and deterministic recovery after live investigation verification.
 
 Investigation smoke: real Anthropic calls using the production Pydantic AI agent and pinned `claude-haiku-4-5-20251001` returned a validated finding after all three tools. The synthetic run used two inference requests, 11,294 input tokens and 1,032 output tokens. A temporary HTTP transport relayed the actual SDK requests through curl because sandboxed Python cannot access external networking; deployed SDK networking remains to be verified. SDK versions are pinned after finding an incompatibility with Anthropic 2.x.
+
+Live investigation hardening: a captured seconds incident reproduced a malformed structured result (array field encoded as text, required fields missing). Strict output plus one bounded correction and a smaller labelled sample passed a real model run against that frozen incident: two requests, 9,360 input tokens and 710 output tokens. Deployed confirmation of this patch remains pending. The submission deliverables and demo journey are mapped in [the submission plan](docs/submission.md).

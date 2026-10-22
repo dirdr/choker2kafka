@@ -1,7 +1,9 @@
 from uuid import UUID, uuid4
 
+from psycopg import sql
 from psycopg.types.json import Jsonb
 
+from sentinel.investigation.settings import AGENT_VERSION
 from sentinel.stream.postgres import PostgresRepository
 
 
@@ -21,14 +23,14 @@ class InvestigationRepository:
                     (investigation_id, incident_id, snapshot_id, kind, status,
                      model_id, agent_version, token_limit)
                 SELECT gen_random_uuid(), incident_id, snapshot_id, 'original',
-                       'queued', %s, 'investigator-v1', %s
+                       'queued', %s, %s, %s
                 FROM sentinel.incidents i
                 WHERE status = 'open' AND topic = %s AND NOT EXISTS (
                     SELECT 1 FROM sentinel.investigations r
                     WHERE r.incident_id = i.incident_id
                 ) ON CONFLICT DO NOTHING
                 """,
-                (model_id, token_limit, topic),
+                (model_id, AGENT_VERSION, token_limit, topic),
             )
 
     def claim(self) -> dict | None:
@@ -45,13 +47,14 @@ class InvestigationRepository:
             return connection.execute(
                 """
                 UPDATE sentinel.investigations SET status = 'running',
-                    started_at = clock_timestamp()
+                    agent_version = %s, started_at = clock_timestamp()
                 WHERE investigation_id = (
                     SELECT investigation_id FROM sentinel.investigations
                     WHERE status = 'queued' ORDER BY created_at
                     FOR UPDATE SKIP LOCKED LIMIT 1
                 ) RETURNING *
-                """
+                """,
+                (AGENT_VERSION,),
             ).fetchone()
 
     def evidence(self, snapshot_id: UUID) -> dict:
@@ -81,13 +84,14 @@ class InvestigationRepository:
         usage: dict,
         duration_ms: int,
         error_code: str | None = None,
+        error_detail: dict | None = None,
     ) -> None:
         with self.storage.connection() as connection:
             run = connection.execute(
                 """
                 UPDATE sentinel.investigations
                 SET status = %s, finding = %s, usage = %s, duration_ms = %s,
-                    error_code = %s, retryable = %s, finished_at = clock_timestamp()
+                    error_code = %s, error_detail = %s, retryable = %s, finished_at = clock_timestamp()
                 WHERE investigation_id = %s AND status = 'running' RETURNING incident_id
                 """,
                 (
@@ -96,6 +100,7 @@ class InvestigationRepository:
                     Jsonb(usage),
                     duration_ms,
                     error_code,
+                    Jsonb(error_detail),
                     error_code is not None,
                     investigation_id,
                 ),
@@ -132,7 +137,9 @@ class InvestigationRepository:
                 (incident_id,),
             ).fetchall()
 
-    def detail(self, investigation_id: UUID) -> dict | None:
+    def detail(
+        self, investigation_id: UUID, include_activity_bodies: bool = False
+    ) -> dict | None:
         with self.storage.connection() as connection:
             run = connection.execute(
                 "SELECT * FROM sentinel.investigations WHERE investigation_id = %s",
@@ -140,10 +147,23 @@ class InvestigationRepository:
             ).fetchone()
             if run:
                 run["activity"] = connection.execute(
-                    """
-                    SELECT * FROM sentinel.investigation_activity
+                    sql.SQL("""
+                    SELECT {} FROM sentinel.investigation_activity
                     WHERE investigation_id = %s ORDER BY recorded_at LIMIT 20
-                    """,
+                    """).format(
+                        sql.SQL(
+                            "*"
+                            if include_activity_bodies
+                            else """
+                        activity_id, investigation_id, tool_call_id, tool_name,
+                        phase, recorded_at,
+                        jsonb_array_length(body->'documents') AS document_count,
+                        body->>'snapshot_id' AS snapshot_id,
+                        body->>'status' AS result_status,
+                        octet_length(body::text) AS body_bytes
+                    """
+                        )
+                    ),
                     (investigation_id,),
                 ).fetchall()
             return run
@@ -174,8 +194,15 @@ class InvestigationRepository:
                 INSERT INTO sentinel.investigations
                     (investigation_id, incident_id, snapshot_id, kind, status,
                      model_id, agent_version, token_limit)
-                VALUES (%s, %s, %s, 'retry', 'queued', %s, 'investigator-v1', %s)
+                VALUES (%s, %s, %s, 'retry', 'queued', %s, %s, %s)
                 RETURNING *
                 """,
-                (uuid4(), incident_id, incident["snapshot_id"], model_id, token_limit),
+                (
+                    uuid4(),
+                    incident_id,
+                    incident["snapshot_id"],
+                    model_id,
+                    AGENT_VERSION,
+                    token_limit,
+                ),
             ).fetchone()

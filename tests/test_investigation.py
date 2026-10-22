@@ -13,8 +13,10 @@ from support import request
 from sentinel.detection.detectors import evaluate
 from sentinel.investigation.agent import investigate
 from sentinel.investigation.domain import CapturedEvidence, Finding, UnsupportedFinding
+from sentinel.investigation.errors import describe_failure
 from sentinel.investigation.postgres import InvestigationConflict
 from sentinel.investigation.service import InvestigationWorker
+from sentinel.investigation.settings import configured_model
 from sentinel.main import app
 
 
@@ -172,6 +174,72 @@ class InvestigationAgentTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(usage.tool_calls, 2)
         self.assertEqual(usage.requests, 2)
 
+    async def test_malformed_finding_gets_one_bounded_correction(self):
+        source = evidence()
+        expected = finding(source)
+        responses = 0
+
+        def model(messages, info):
+            nonlocal responses
+            responses += 1
+            self.assertTrue(info.output_tools[0].strict)
+            if responses == 1:
+                return ModelResponse(
+                    parts=[
+                        ToolCallPart("inspect_incident", {}, "inspect"),
+                        ToolCallPart("lookup_producer_context", {}, "context"),
+                    ]
+                )
+            payload = (
+                expected.model_dump(mode="json")
+                if responses == 3
+                else {
+                    "conclusion": "supported",
+                    "likely_cause": "Unit mismatch",
+                    "alternatives": "<item>delayed delivery</item>",
+                }
+            )
+            return ModelResponse(
+                parts=[
+                    ToolCallPart(
+                        info.output_tools[0].name, payload, f"result-{responses}"
+                    )
+                ]
+            )
+
+        usage = RunUsage()
+        result = await investigate(
+            source, MagicMock(), usage, 20000, CountedFunctionModel(model)
+        )
+        self.assertEqual(result, expected)
+        self.assertEqual(usage.requests, 3)
+
+    async def test_repeated_malformed_output_has_safe_field_errors(self):
+        def model(messages, info):
+            return ModelResponse(
+                parts=[
+                    ToolCallPart(
+                        info.output_tools[0].name,
+                        {"alternatives": "secret-payload"},
+                        "invalid",
+                    )
+                ]
+            )
+
+        with self.assertRaises(Exception) as caught:
+            await investigate(
+                evidence(), MagicMock(), RunUsage(), 20000, CountedFunctionModel(model)
+            )
+        code, detail = describe_failure(caught.exception)
+        self.assertEqual(code, "invalid_model_output")
+        self.assertTrue(
+            any(
+                f["path"] == "alternatives" and f["type"] == "list_type"
+                for f in detail["fields"]
+            )
+        )
+        self.assertNotIn("secret-payload", str(detail))
+
     async def test_tool_call_limit_stops_a_loop(self):
         source = evidence()
         calls = []
@@ -250,6 +318,26 @@ class InvestigationApiTests(unittest.IsolatedAsyncioTestCase):
         status, _ = await request(app, f"/api/investigations/{uuid4()}")
         self.assertEqual(status, 404)
 
+    async def test_detail_defaults_to_compact_activity_and_allows_explicit_raw_evidence(
+        self,
+    ):
+        run_id = uuid4()
+        self.repository.detail.return_value = {"status": "failed", "activity": []}
+        await request(app, f"/api/investigations/{run_id}")
+        self.repository.detail.assert_called_with(run_id, False)
+        await request(
+            app, f"/api/investigations/{run_id}", query=b"include_activity_bodies=true"
+        )
+        self.repository.detail.assert_called_with(run_id, True)
+
+    async def test_status_exposes_configured_model_and_limits(self):
+        with patch.dict(os.environ, {"ANTHROPIC_MODEL": "claude-sonnet-4-6"}):
+            status, body = await request(app, "/api/investigation")
+        self.assertEqual(status, 200)
+        self.assertEqual(body["model_id"], "claude-sonnet-4-6")
+        self.assertEqual(body["provider"], "anthropic")
+        self.assertEqual(body["deadline_seconds"], 45)
+
     async def test_retry_requires_authentication(self):
         with patch.dict(os.environ, {"OPERATOR_TOKEN": "test"}):
             status, _ = await request(
@@ -270,3 +358,13 @@ class InvestigationApiTests(unittest.IsolatedAsyncioTestCase):
                 token="test",
             )
         self.assertEqual(status, 409)
+
+
+class ModelConfigurationTests(unittest.TestCase):
+    def test_model_setting_rejects_other_providers_and_blank_ids(self):
+        for value in ("", "openai:gpt-4", "claude- invalid"):
+            with (
+                patch.dict(os.environ, {"ANTHROPIC_MODEL": value}),
+                self.assertRaises(ValueError),
+            ):
+                configured_model()

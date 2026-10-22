@@ -8,9 +8,11 @@ from time import monotonic
 from pydantic_ai.usage import RunUsage
 
 from sentinel.connections import required
-from sentinel.investigation.agent import MODEL_ID, investigate, token_limit
-from sentinel.investigation.domain import CapturedEvidence, UnsupportedFinding
+from sentinel.investigation.agent import investigate
+from sentinel.investigation.domain import CapturedEvidence
+from sentinel.investigation.errors import describe_failure
 from sentinel.investigation.postgres import InvestigationRepository
+from sentinel.investigation.settings import configured_model, token_limit
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +39,7 @@ class InvestigationWorker:
         usage = RunUsage()
         finding = None
         error_code = None
+        error_detail = None
         try:
             evidence = CapturedEvidence(
                 str(run["snapshot_id"]), self.repository.evidence(run["snapshot_id"])
@@ -53,11 +56,7 @@ class InvestigationWorker:
                 )
             ).model_dump(mode="json")
         except Exception as error:
-            error_code = (
-                "unsupported_finding"
-                if isinstance(error, UnsupportedFinding)
-                else type(error).__name__
-            )
+            error_code, error_detail = describe_failure(error)
             logger.warning("Investigation failed (%s)", error_code)
         self.repository.finish(
             run["investigation_id"],
@@ -65,6 +64,7 @@ class InvestigationWorker:
             {k: v for k, v in asdict(usage).items() if isinstance(v, (int, dict))},
             int((monotonic() - started) * 1000),
             error_code,
+            error_detail=error_detail,
         )
 
     def run(self) -> None:
@@ -77,7 +77,7 @@ class InvestigationWorker:
                         self.repository.storage.initialize()
                         self.initialized = True
                     self.repository.enqueue(
-                        MODEL_ID, budget, os.getenv("KAFKA_TOPIC", "orders")
+                        configured_model(), budget, os.getenv("KAFKA_TOPIC", "orders")
                     )
                     run = self.repository.claim()
                     self.set_state("running")

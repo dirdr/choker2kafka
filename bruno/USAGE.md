@@ -2,7 +2,7 @@
 
 In Bruno, choose **Open Collection** and select this `bruno` directory. Select the **Local** or **Aiven** environment. Local uses `http://localhost:8080`; Aiven uses the Runtime URL already configured in this project.
 
-The collection contains twenty-one requests across four folders:
+The collection contains twenty-two requests across four folders:
 
 | Folder | Purpose |
 |---|---|
@@ -41,3 +41,5 @@ bru run "01 Read-only" --env Aiven
 The collection root also contains producer writes, so choose the folder matching the operation you intend. The `limit` environment variable defaults to 20; the API accepts 1–100.
 
 After incident capture, run **List investigations**, then repeat **Live investigation detail** while its status is `running`. The response shows actual persisted tool starts/results; a completed run includes its finding and usage. The list captures the newest `investigation_id`; an explicit environment value overrides it. **Retry failed investigation** requires the operator secret and a failed latest attempt on an open incident; it creates a new paid attempt. Run it separately, not as a folder-wide smoke test. The live workbench UI and isolated re-investigation are later plan steps.
+
+Live detail now returns compact tool summaries by default. **Full investigation evidence** includes archived raw tool bodies; avoid polling that response. **Investigation status** shows the configured model, agent version and limits. Each attempt retains its actual model; set `ANTHROPIC_MODEL` in Runtime to change future attempts after redeployment.

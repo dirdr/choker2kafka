@@ -1,10 +1,9 @@
 import asyncio
-import os
 from collections.abc import Callable
 from dataclasses import dataclass
 
 from anthropic import AsyncAnthropic
-from pydantic_ai import Agent, RunContext, Tool
+from pydantic_ai import Agent, RunContext, Tool, ToolOutput
 from pydantic_ai.models import Model
 from pydantic_ai.models.anthropic import AnthropicModel
 from pydantic_ai.providers.anthropic import AnthropicProvider
@@ -12,8 +11,8 @@ from pydantic_ai.usage import RunUsage, UsageLimits
 
 from sentinel.connections import required
 from sentinel.investigation.domain import CapturedEvidence, Finding
+from sentinel.investigation.settings import MODEL_ID
 
-MODEL_ID = "claude-haiku-4-5-20251001"
 INSTRUCTIONS = """
 Investigate a Kafka contract violation using only the captured evidence tools.
 Call inspect_incident and lookup_producer_context before drawing conclusions.
@@ -29,14 +28,9 @@ Missing reviewed memory is not supporting evidence. Recommendations are advisory
 there is no mutation tool. Recommend aligning the producer with its captured
 contract. Contract versions are immutable; do not recommend rewriting a contract
 to hide a violation. Return a concise finding, not private reasoning.
+All tool arguments must be JSON, with arrays for list fields. Keep each prose
+field to two short sentences and cite only the few evidence IDs needed.
 """
-
-
-def token_limit() -> int:
-    value = int(os.getenv("INVESTIGATION_TOKEN_LIMIT", "20000"))
-    if not 4000 <= value <= 100000:
-        raise ValueError("INVESTIGATION_TOKEN_LIMIT must be between 4000 and 100000")
-    return value
 
 
 @dataclass
@@ -69,9 +63,9 @@ def build_agent(model: Model) -> Agent[EvidenceDependencies, Finding]:
     return Agent(
         model,
         deps_type=EvidenceDependencies,
-        output_type=Finding,
+        output_type=ToolOutput(Finding, strict=True),
         instructions=INSTRUCTIONS,
-        retries=0,
+        retries={"tools": 0, "output": 1},
         model_settings={"max_tokens": 1500, "temperature": 0},
         tools=[
             Tool(
@@ -106,7 +100,9 @@ async def investigate(
         async with asyncio.timeout(45):
             if model is None:
                 client = AsyncAnthropic(
-                    api_key=required("ANTHROPIC_API_KEY"), max_retries=0, timeout=20
+                    api_key=required("ANTHROPIC_API_KEY"),
+                    max_retries={"tools": 0, "output": 1},
+                    timeout=20,
                 )
                 model = AnthropicModel(
                     model_id, provider=AnthropicProvider(anthropic_client=client)

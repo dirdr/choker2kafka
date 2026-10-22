@@ -43,7 +43,7 @@ class CapturedEvidence:
                 ],
                 *[
                     self.document(f"event:{e['event_id']}", e)
-                    for e in (*self.events[:10], *self.events[-20:])
+                    for e in (*self.events[:5], *self.events[-5:])
                 ],
             ],
             "lookup_producer_context": [
@@ -76,7 +76,7 @@ class CapturedEvidence:
         return {
             "snapshot_id": self.snapshot_id,
             "documents": documents,
-            "sample_selection": "First ten and last twenty captured events; not the complete window",
+            "sample_selection": "First five and last five captured events; not the complete window",
             "missing_configuration_revisions": self.body.get(
                 "missing_configuration_revisions", []
             ),

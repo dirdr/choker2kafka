@@ -12,5 +12,5 @@ get {
 
 tests {
   test("HTTP 200", function () { expect(res.getStatus()).to.equal(200); });
-  test("Worker state is visible", function () { expect(res.getBody()).to.have.property("worker"); });
+  test("Worker state is visible", function () { expect(res.getBody()).to.have.property("worker"); expect(res.getBody()).to.have.property("model_id"); });
 }

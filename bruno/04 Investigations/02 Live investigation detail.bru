@@ -25,3 +25,7 @@ tests {
   test("HTTP 200", function () { expect(res.getStatus()).to.equal(200); });
   test("State and actual tool activity are visible", function () { expect(res.getBody()).to.have.property("status"); expect(res.getBody().activity).to.be.an("array"); });
 }
+
+docs {
+  Compact live status: includes model, run state, safe error details, finding, usage and tool activity summaries. Raw tool bodies are excluded. Use Full investigation evidence to inspect them explicitly.
+}
