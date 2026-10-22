@@ -15,6 +15,7 @@ COPY pyproject.toml uv.lock ./
 RUN uv sync --locked --no-dev --no-install-project
 
 COPY sentinel ./sentinel
+COPY certs/kafka-ca.pem ./secrets/ca.pem
 
 USER 10001:10001
 
