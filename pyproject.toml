@@ -8,23 +8,5 @@ dependencies = [
     "uvicorn==0.54.0",
 ]
 
-[dependency-groups]
-connectivity = [
-    "confluent-kafka==2.16.0",
-    "psycopg[binary]==3.3.6",
-    "python-dotenv==1.2.4",
-]
-dev = [
-    "pytest==9.1.1",
-    "ruff==0.17.1",
-]
-
 [tool.uv]
 package = false
-
-[tool.ruff]
-target-version = "py314"
-line-length = 100
-
-[tool.ruff.lint]
-select = ["E", "F", "I", "UP", "B", "ASYNC", "SIM"]

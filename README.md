@@ -42,16 +42,6 @@ docker build -t choker2kafka .
 docker run --rm -p 8080:8080 choker2kafka
 ```
 
-## Check service connections separately
-
-Configure `.env` using `.env.example` and place the Kafka CA certificate at `secrets/ca.pem`. These files are excluded from Git and the Docker build.
-
-```sh
-uv run --group connectivity scripts/check_connections.py
-```
-
-This command authenticates to PostgreSQL and Kafka and checks whether `orders` exists. It does not create topics or change data.
-
 ## Code layout
 
 `sentinel/main.py` assembles the application. `sentinel/health.py` contains the first feature slice. New features will keep their routes and behavior together in their own slices.
