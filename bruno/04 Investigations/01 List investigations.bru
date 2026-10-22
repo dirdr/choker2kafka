@@ -1,0 +1,39 @@
+meta {
+  name: List investigations
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{base_url}}/api/incidents/{{incident_id}}/investigations
+  body: none
+  auth: none
+}
+
+script:pre-request {
+  const explicitId = bru.getEnvVar("incident_id");
+  if (explicitId) {
+    bru.setVar("incident_id", explicitId);
+    bru.setVar("incident_base_url", bru.getEnvVar("base_url"));
+  }
+  const incidentId = bru.getVar("incident_id");
+  if (!incidentId) {
+    throw new Error("Run List incidents after a violation, or set incident_id in the selected environment.");
+  }
+  if (bru.getVar("incident_id") && bru.getVar("incident_base_url") !== bru.getEnvVar("base_url")) {
+    throw new Error("Run List incidents in the selected environment first.");
+  }
+}
+
+script:post-response {
+  if (res.getStatus() === 200) {
+    const runs = res.getBody();
+    bru.setVar("investigation_id", runs.length ? runs[0].investigation_id : "");
+    bru.setVar("investigation_base_url", bru.getEnvVar("base_url"));
+  }
+}
+
+tests {
+  test("HTTP 200", function () { expect(res.getStatus()).to.equal(200); });
+  test("Attempts are an array", function () { expect(res.getBody()).to.be.an("array"); });
+}

@@ -14,14 +14,22 @@ flowchart TB
             producer["Configured producer<br/>Ten orders per batch · Reloads revisions"]
             consumer["Ingestion service<br/>Validates and batches consumed records"]
         end
+        investigator["Investigation worker<br/>Durable queue · Typed read tools · 45-second deadline"]
+        investigationrepo["Investigation repository<br/>Runs · Tool starts/results · Findings"]
         monitor["Detection application worker<br/>Evaluates every five seconds"]
         domain["Domain rule registry<br/>Pure timestamp bounds detector"]
         streamrepo["Stream repository adapter<br/>psycopg · Config and event transactions"]
         capturerepo["Detection repository adapter<br/>psycopg · Snapshot and incident transaction"]
     end
+    claude["Anthropic Claude<br/>Pinned model · Typed finding"]
     orders[["orders topic<br/>Aiven Kafka · TLS"]]
     database[("Aiven PostgreSQL<br/>Configuration · Contracts · Events<br/>Evaluations · Incidents · Frozen evidence")]
 
+    investigator -->|"Claim queued incident / read immutable snapshot"| investigationrepo
+    investigator -->|"Bounded model calls with evidence tools · HTTPS"| claude
+    investigator -->|"Record activity and terminal finding / failure"| investigationrepo
+    investigationrepo -->|"Transactional SQL · TLS"| database
+    api -->|"Poll running investigations / authenticated retry"| investigationrepo
     operator -->|"Read APIs / operator bearer token · HTTPS"| api
     api -->|"Read events / change exact revision"| streamrepo
     api -->|"Read contracts / incidents / captured evidence"| capturerepo

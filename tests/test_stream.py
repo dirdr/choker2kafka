@@ -280,7 +280,12 @@ class StreamApiTests(unittest.IsolatedAsyncioTestCase):
     async def test_worker_is_stopped_on_shutdown(self):
         with (
             patch.dict(
-                os.environ, {"STREAM_ENABLED": "true", "DETECTION_ENABLED": "false"}
+                os.environ,
+                {
+                    "STREAM_ENABLED": "true",
+                    "DETECTION_ENABLED": "false",
+                    "INVESTIGATION_ENABLED": "false",
+                },
             ),
             patch("sentinel.main.StreamWorker") as worker,
         ):

@@ -4,17 +4,21 @@ version = "0.1.0"
 description = "Kafka contract incident investigation and verified remediation"
 requires-python = ">=3.14,<3.15"
 dependencies = [
+  "anthropic==1.12.1",
   "confluent-kafka==2.16.0",
   "fastapi==0.159.1",
   "psycopg[binary]==3.3.6",
   "pydantic==2.14.1",
+  "pydantic-ai-slim[anthropic]==2.59.0",
   "python-dotenv==1.2.4",
   "uvicorn==0.54.0",
 ]
 
 [tool.uv]
 package = false
+environments = ["sys_platform == 'darwin'", "sys_platform == 'linux'"]
 
 [tool.ruff.lint.per-file-ignores]
 "sentinel/stream/service.py" = ["BLE001"]
 "sentinel/detection/service.py" = ["BLE001"]
+"sentinel/investigation/service.py" = ["BLE001"]

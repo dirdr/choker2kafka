@@ -11,11 +11,11 @@ C4Container
         ContainerQueue(orders, "orders topic", "Aiven Kafka", "Synthetic events and durable offsets")
         ContainerDb(database, "Sentinel database", "Aiven PostgreSQL", "Contracts, events and incident evidence")
     }
-    System_Ext(anthropic, "Anthropic API", "Authentication check; investigator planned")
+    System_Ext(anthropic, "Anthropic API", "Readiness and bounded Claude investigation")
     Rel(engineer, app, "Reads status and submits configuration changes", "JSON / HTTPS")
     Rel(app, orders, "Publishes orders and consumes records", "Kafka / TLS")
     Rel(app, database, "Executes transactional parameterized queries", "psycopg / TLS")
-    Rel(app, anthropic, "Checks credential access", "HTTPS")
+    Rel(app, anthropic, "Checks credentials and investigates captured incidents", "HTTPS")
 ```
 
-One Runtime instance and one Uvicorn worker are the supported deployment shape. Two background threads keep ingestion and contract evaluation independent. The existing Grafana service will later read restricted PostgreSQL views; it will have no action-execution role.
+One Runtime instance and one Uvicorn worker are the supported deployment shape. Three background threads separate ingestion, contract evaluation and queued investigation. The existing Grafana service will later read restricted PostgreSQL views; it will have no action-execution role.

@@ -1,0 +1,34 @@
+meta {
+  name: Retry failed investigation
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{base_url}}/api/incidents/{{incident_id}}/investigations/retry
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{operator_token}}
+}
+
+script:pre-request {
+  const explicitId = bru.getEnvVar("incident_id");
+  if (explicitId) {
+    bru.setVar("incident_id", explicitId);
+    bru.setVar("incident_base_url", bru.getEnvVar("base_url"));
+  }
+  const incidentId = bru.getVar("incident_id");
+  if (!incidentId) {
+    throw new Error("Run List incidents after a violation, or set incident_id in the selected environment.");
+  }
+  if (bru.getVar("incident_id") && bru.getVar("incident_base_url") !== bru.getEnvVar("base_url")) {
+    throw new Error("Run List incidents in the selected environment first.");
+  }
+}
+
+tests {
+  test("Retry accepted", function () { expect(res.getStatus()).to.equal(202); expect(res.getBody().status).to.equal("queued"); });
+}

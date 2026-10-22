@@ -1,6 +1,6 @@
 # PostgreSQL records
 
-The ingestion and detection slices use eleven application tables in the `sentinel` schema and one migration table in `public`. Detection tables are introduced by migration `002_detection.sql`; their deployed behavior still needs verification.
+The ingestion and detection slices use thirteen application tables in the `sentinel` schema and one migration table in `public`. Detection tables come from `002_detection.sql`; investigation runs and tool activity come from `003_investigation.sql`. Live fault-to-investigation verification remains pending.
 
 | Table | Records | Purpose |
 |---|---|---|
@@ -15,6 +15,8 @@ The ingestion and detection slices use eleven application tables in the `sentine
 | `sentinel.incident_snapshots` | Captured time and immutable JSON evidence body | Makes investigation reproducible after live sources change |
 | `sentinel.incidents` | Violation episode, status, triggering contract, signal and snapshot reference | Suppresses repeated active incidents and preserves incident identity |
 | `sentinel.incident_timeline` | Append-only typed incident entries | Starts with detection and later supports investigation, decisions, actions and recovery |
+| `sentinel.investigations` | Queue state, frozen snapshot reference, pinned model/agent version, token budget, finding, failure, duration and usage | Records each original attempt and explicit retry; terminal results are not overwritten by workers |
+| `sentinel.investigation_activity` | Append-only tool-call ID, name, start/result, timestamp and actual arguments/result | Supports live polling and later review without recording private chain-of-thought |
 | `public.sentinel_migrations` | Migration filename and application time | Applies schema changes once under a transaction lock |
 
 ```mermaid
@@ -25,6 +27,9 @@ erDiagram
     CONTRACT_VERSIONS ||--o{ INCIDENTS : triggers
     INCIDENT_SNAPSHOTS ||--o| INCIDENTS : preserves
     INCIDENTS ||--o{ INCIDENT_TIMELINE : records
+    INCIDENTS ||--o{ INVESTIGATIONS : investigates
+    INCIDENT_SNAPSHOTS ||--o{ INVESTIGATIONS : freezes
+    INVESTIGATIONS ||--o{ INVESTIGATION_ACTIVITY : records
     MONITORING_RUNS {
         uuid run_id PK
         text topic

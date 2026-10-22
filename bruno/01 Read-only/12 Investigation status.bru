@@ -1,0 +1,16 @@
+meta {
+  name: Investigation status
+  type: http
+  seq: 12
+}
+
+get {
+  url: {{base_url}}/api/investigation
+  body: none
+  auth: none
+}
+
+tests {
+  test("HTTP 200", function () { expect(res.getStatus()).to.equal(200); });
+  test("Worker state is visible", function () { expect(res.getBody()).to.have.property("worker"); });
+}

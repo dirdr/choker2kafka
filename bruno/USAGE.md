@@ -2,12 +2,13 @@
 
 In Bruno, choose **Open Collection** and select this `bruno` directory. Select the **Local** or **Aiven** environment. Local uses `http://localhost:8080`; Aiven uses the Runtime URL already configured in this project.
 
-The collection contains seventeen requests across three folders:
+The collection contains twenty-one requests across four folders:
 
 | Folder | Purpose |
 |---|---|
 | `01 Read-only` | Liveness, readiness, stream status, events, producer configuration/history, contracts, detection, incident lists and OpenAPI |
 | `02 Incident evidence` | A recorded incident's signal/timeline and frozen evidence |
+| `04 Investigations` | List attempts, poll live tool activity/finding and explicitly retry a failed run |
 | `03 Producer controls` | Read the current revision, emit seconds/microseconds and restore milliseconds |
 
 Run **01 Read-only** for an API smoke check. An empty incident list is valid. Warm-up and stale states remain visible in the response; HTTP 200 alone does not prove stream or contract health. HTTP 503 fails readiness assertions, and HTTP 404 on the new API routes means the target deployment does not contain those routes yet.
@@ -38,3 +39,5 @@ bru run "01 Read-only" --env Aiven
 ```
 
 The collection root also contains producer writes, so choose the folder matching the operation you intend. The `limit` environment variable defaults to 20; the API accepts 1–100.
+
+After incident capture, run **List investigations**, then repeat **Live investigation detail** while its status is `running`. The response shows actual persisted tool starts/results; a completed run includes its finding and usage. The list captures the newest `investigation_id`; an explicit environment value overrides it. **Retry failed investigation** requires the operator secret and a failed latest attempt on an open incident; it creates a new paid attempt. Run it separately, not as a folder-wide smoke test. The live workbench UI and isolated re-investigation are later plan steps.

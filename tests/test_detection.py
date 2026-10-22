@@ -256,7 +256,12 @@ class DetectionApiTests(unittest.IsolatedAsyncioTestCase):
     async def test_detector_lifecycle_is_independent_of_stream_worker(self):
         with (
             patch.dict(
-                os.environ, {"STREAM_ENABLED": "false", "DETECTION_ENABLED": "true"}
+                os.environ,
+                {
+                    "STREAM_ENABLED": "false",
+                    "DETECTION_ENABLED": "true",
+                    "INVESTIGATION_ENABLED": "false",
+                },
             ),
             patch("sentinel.main.DetectionWorker") as detector,
         ):

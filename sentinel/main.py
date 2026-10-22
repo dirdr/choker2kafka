@@ -10,6 +10,9 @@ from sentinel.detection.postgres import DetectionRepository
 from sentinel.detection.service import DetectionWorker
 from sentinel.detection.web import router as detection_router
 from sentinel.health import router as health_router
+from sentinel.investigation.postgres import InvestigationRepository
+from sentinel.investigation.service import InvestigationWorker
+from sentinel.investigation.web import router as investigation_router
 from sentinel.readiness import router as readiness_router
 from sentinel.stream.kafka import KafkaStream
 from sentinel.stream.postgres import PostgresRepository
@@ -23,6 +26,7 @@ load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 async def lifespan(app: FastAPI):
     app.state.repository = PostgresRepository()
     app.state.detection_repository = DetectionRepository(app.state.repository)
+    app.state.investigation_repository = InvestigationRepository(app.state.repository)
     workers = []
     tasks = []
     if os.getenv("STREAM_ENABLED", "true").lower() == "true":
@@ -42,6 +46,10 @@ async def lifespan(app: FastAPI):
         )
         app.state.detection_worker = detector
         workers.append(detector)
+    if os.getenv("INVESTIGATION_ENABLED", "true").lower() == "true":
+        investigator = InvestigationWorker(app.state.investigation_repository)
+        app.state.investigation_worker = investigator
+        workers.append(investigator)
     tasks = [asyncio.create_task(asyncio.to_thread(worker.run)) for worker in workers]
     try:
         yield
@@ -49,7 +57,7 @@ async def lifespan(app: FastAPI):
         for worker in workers:
             worker.stop()
         await asyncio.gather(*tasks)
-        for name in ("stream_worker", "detection_worker"):
+        for name in ("stream_worker", "detection_worker", "investigation_worker"):
             if hasattr(app.state, name):
                 delattr(app.state, name)
 
@@ -59,3 +67,4 @@ app.include_router(health_router)
 app.include_router(readiness_router)
 app.include_router(stream_router)
 app.include_router(detection_router)
+app.include_router(investigation_router)

@@ -1,0 +1,27 @@
+meta {
+  name: Live investigation detail
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{base_url}}/api/investigations/{{investigation_id}}
+  body: none
+  auth: none
+}
+
+script:pre-request {
+  const explicitId = bru.getEnvVar("investigation_id");
+  if (explicitId) {
+    bru.setVar("investigation_id", explicitId);
+    bru.setVar("investigation_base_url", bru.getEnvVar("base_url"));
+  }
+  if (!bru.getVar("investigation_id") || bru.getVar("investigation_base_url") !== bru.getEnvVar("base_url")) {
+    throw new Error("Run List investigations in the selected environment, or set investigation_id.");
+  }
+}
+
+tests {
+  test("HTTP 200", function () { expect(res.getStatus()).to.equal(200); });
+  test("State and actual tool activity are visible", function () { expect(res.getBody()).to.have.property("status"); expect(res.getBody().activity).to.be.an("array"); });
+}

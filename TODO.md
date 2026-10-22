@@ -58,15 +58,20 @@ The operator confirmed the basic round trip and authorized the detection slice. 
 - [ ] Verify a live unit restoration changes new checks without rewriting the incident snapshot.
 - [ ] Verify stale transport suppresses new incidents on the deployed stack.
 
-Eligible-memory retrieval and capture remain part of the later investigation/memory slice. Current snapshots explicitly mark memory capture as not implemented. No agent diagnosis, proposal, repair or automatic resolution is claimed by this slice.
+Eligible-memory retrieval and capture remain part of the later investigation/memory slice. Current snapshots explicitly mark memory capture as not implemented. Investigation is implemented separately in step 4; proposals, repairs and automatic resolution remain pending.
 
-## 4. Agent investigation — pending
+## 4. Agent investigation — implemented; deployed verification pending
 
-- [ ] Pin one Claude model after a real typed-tool and structured-output smoke test.
-- [ ] Add bounded evidence, producer-context and eligible-memory tools.
-- [ ] Persist investigations, tool activity, findings, failures and usage.
-- [ ] Enforce ten tool calls, a token allowance and a 45-second deadline.
-- [ ] Validate evidence references and abstain when attribution is unsupported.
+- [x] Pin one Claude model after a real typed-tool and structured-output smoke test.
+- [x] Add frozen-evidence and producer-context tools; expose reviewed-memory unavailability explicitly.
+- [ ] Implement reviewed eligible-memory retrieval and capture.
+- [x] Queue original investigations automatically and preserve failures across restarts; protect explicit retries with operator authentication.
+- [x] Persist tool starts/results during execution so the workbench can poll live activity.
+- [x] Validate run SQL, retry isolation and append-only tool activity in embedded PostgreSQL.
+- [ ] Redeploy and verify a live incident progresses from queued to a recorded finding with actual tool activity.
+- [x] Persist investigations, tool activity, findings, failures and usage.
+- [x] Enforce ten tool calls, a token allowance and a 45-second deadline.
+- [x] Validate evidence references and abstain when attribution is unsupported.
 
 ## 5. Policy-controlled remediation and recovery — pending
 
@@ -83,6 +88,7 @@ Eligible-memory retrieval and capture remain part of the later investigation/mem
 
 - [ ] Serve pinned Tabler assets, Jinja templates and polling handlers from this application.
 - [ ] Show incidents, evidence, findings, configuration diffs, decisions and recovery history.
+- [ ] Display tool starts/results live during original investigations and re-investigations, with status, elapsed time and evidence-backed LLM explanations; use fresh model calls for re-investigation and do not expose private chain-of-thought.
 - [ ] Provide operator approval/rejection controls and safe timestamp rendering.
 - [ ] Re-investigate resolved incidents from captured source context in a separate run.
 - [ ] Prove re-investigation cannot mutate live configuration or change resolution counts.
@@ -108,6 +114,8 @@ Keep `DATABASE_URL`, `KAFKA_BOOTSTRAP_SERVERS`, `KAFKA_SECURITY_PROTOCOL`, `KAFK
 | `KAFKA_GROUP_ID` | `sentinel-orders-v1` | Stable consumer group across restarts |
 | `STREAM_ENABLED` | `true` | Set to `false` to disable the stream worker |
 | `DETECTION_ENABLED` | `true` | Set to `false` to disable detection independently of ingestion |
+| `INVESTIGATION_ENABLED` | `true` | Disable automatic model investigations independently of detection |
+| `INVESTIGATION_TOKEN_LIMIT` | `20000` | Per-attempt token budget, 4000–100000; includes a 1500-token output reserve |
 | `CODE_VERSION` | `0.1.0` | Producer build identifier recorded in events |
 | `OPERATOR_TOKEN` | unset | Required for configuration mutation; reads and streaming work without it |
 
@@ -132,11 +140,17 @@ The stream starts automatically, applies migrations and creates the configured t
 | `GET /api/incidents?limit=20` | Incident summaries, bounded to 100; optional `status=open` filter |
 | `GET /api/incidents/{id}` | Recorded signal and timeline |
 | `GET /api/incidents/{id}/evidence` | Immutable captured source snapshot |
+| `GET /api/investigation` | Investigation worker status |
+| `GET /api/incidents/{id}/investigations` | Latest 100 investigation attempts |
+| `GET /api/investigations/{id}` | Run state, finding, usage and live tool activity |
+| `POST /api/incidents/{id}/investigations/retry` | Authenticated retry of a failed attempt on an open incident |
 
 The patch body contains `expected_revision`, `event_time_unit` and `reason`. Use the revision returned by the configuration endpoint. A stale revision returns HTTP 409; malformed or unsupported changes return HTTP 422. This is an operator configuration API; agent proposals, approval policy and recovery are still pending in step 5.
 
 Run tests with `uv run python -m unittest discover -s tests -v`. Set `TEST_DATABASE_URL` to a dedicated TLS-enabled PostgreSQL test database to include integration tests; those tests apply migrations, change test producer configuration and retain append-only evidence. They are skipped when that variable is absent. Do not point the integration suite at the running demo database.
 
-Current local result: 67 unit/API tests passed; fourteen network integration tests are skipped without `TEST_DATABASE_URL`. Those fourteen repository test cases also passed against isolated embedded PostgreSQL through a temporary test adapter, validating migrations, SQL, transactions, deduplication, restart identity and evidence immutability. This does not validate psycopg/TLS/network behavior against Aiven. The native PostgreSQL test server was blocked by sandbox shared-memory permissions. Lint, formatting and lockfile checks passed.
+Current local result: 81 unit/API tests passed; nineteen network integration tests are skipped without `TEST_DATABASE_URL`. Those nineteen repository test cases also passed against isolated embedded PostgreSQL through a temporary test adapter, validating migrations, SQL, transactions, deduplication, restart identity and evidence immutability. This does not validate psycopg/TLS/network behavior against Aiven. The native PostgreSQL test server was blocked by sandbox shared-memory permissions. Lint, formatting and lockfile checks passed.
 
-See [the architecture views](docs/architecture/index.md), [the table inventory](docs/architecture/data-model.md) and [contract definitions/live verification](docs/contracts.md). The next implementation slice is bounded Claude investigation after this slice's deployed checks.
+See [the architecture views](docs/architecture/index.md), [the table inventory](docs/architecture/data-model.md) and [contract definitions/live verification](docs/contracts.md). The next implementation slice is proposal/approval policy and deterministic recovery after live investigation verification.
+
+Investigation smoke: real Anthropic calls using the production Pydantic AI agent and pinned `claude-haiku-4-5-20251001` returned a validated finding after all three tools. The synthetic run used two inference requests, 11,294 input tokens and 1,032 output tokens. A temporary HTTP transport relayed the actual SDK requests through curl because sandboxed Python cannot access external networking; deployed SDK networking remains to be verified. SDK versions are pinned after finding an incompatibility with Anthropic 2.x.
