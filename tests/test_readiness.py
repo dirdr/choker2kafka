@@ -98,6 +98,33 @@ class ReadinessTests(unittest.TestCase):
         self.assertEqual(config["ssl.key.pem"], "client\nkey")
         self.assertNotIn("sasl.password", config)
 
+    def test_kafka_reads_ca_value_without_accessing_certificate_files(self):
+        self.configure_kafka()
+        pem = "-----BEGIN CERTIFICATE-----\ncertificate-content\n-----END CERTIFICATE-----"
+        os.environ["KAFKA_SSL_CA_LOCATION"] = "missing-runtime-file.pem"
+        for value in (pem, pem.replace("\n", "\\n"), f"\n{pem}\n"):
+            with self.subTest(value=value):
+                os.environ["KAFKA_CA_CERT"] = value
+                with patch.object(
+                    readiness.Path,
+                    "is_file",
+                    side_effect=AssertionError("File access is not required"),
+                ):
+                    config = readiness.kafka_configuration()
+                self.assertEqual(config["ssl.ca.pem"], pem)
+                self.assertNotIn("ssl.ca.location", config)
+
+    def test_kafka_passes_environment_certificate_to_client(self):
+        self.configure_kafka()
+        os.environ.pop("KAFKA_SSL_CA_LOCATION", None)
+        with patch.object(readiness, "AdminClient") as client:
+            client.return_value.list_topics.return_value = SimpleNamespace(
+                brokers={1: object()}
+            )
+            self.assertEqual(readiness.check_kafka()["status"], "ok")
+        self.assertEqual(client.call_args.args[0]["ssl.ca.pem"], "certificate\ncontent")
+        self.assertNotIn("ssl.ca.location", client.call_args.args[0])
+
     def test_kafka_rejects_insecure_transport_and_missing_ca(self):
         self.configure_kafka()
         os.environ["KAFKA_SECURITY_PROTOCOL"] = "PLAINTEXT"

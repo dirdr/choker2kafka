@@ -41,7 +41,7 @@ def kafka_configuration() -> dict[str, str | int]:
         "socket.timeout.ms": 5000,
         "log_level": 0,
     }
-    if certificate := os.getenv("KAFKA_CA_CERT"):
+    if certificate := os.getenv("KAFKA_CA_CERT", "").strip():
         config["ssl.ca.pem"] = certificate.replace("\\n", "\n")
     elif location := os.getenv("KAFKA_SSL_CA_LOCATION"):
         path = Path(location)
