@@ -2,7 +2,7 @@
 
 Open the application's base URL after redeploying. `/` lists incident summaries without selecting one. `/incidents/{id}` opens its details; `/stream` holds stream metrics and records, and `/contracts` lists contract versions. `/health` remains the JSON liveness endpoint, and `/docs` remains the API reference.
 
-FastAPI serves the Jinja template, pinned Tabler 1.7.0 CSS, Tabler 3.49.0 icons and native JavaScript modules from the same container. No separate frontend host, CDN or production Node build is required. Licenses ship with the vendored assets. The interface uses dark surfaces, compact tables and semantic status colors.
+FastAPI serves the Jinja template, pinned Tabler 1.7.0 CSS, Tabler 3.49.0 icons and native JavaScript modules from the same container. No separate frontend host, CDN or production Node build is required. Licenses ship with the vendored assets. The interface uses near-black surfaces, larger self-hosted Inter text, compact incident summaries and semantic status colors. Inter variable 5.3.0 is served locally under its bundled OFL license.
 
 The workbench shows transport freshness, a ten-second average event rate, timestamp violation ratio, recent incidents, investigation attempts, recorded tool activity, findings, contracts and recent events. The incident count covers the latest 20 records. Charts contain samples collected since opening the tab; they do not claim to show database history. Raw business timestamps remain integers rather than being interpreted as dates. Browser-unsafe integers are labelled explicitly.
 
@@ -37,4 +37,4 @@ SENTINEL_BASE_URL=https://YOUR-RUNTIME-URL npm --prefix tools/browser run test:l
 
 Screenshots go to `tools/browser/test-results`. Fixture screenshots represent test data. Live mode reads the real deployment and makes no configuration changes or investigation retries.
 
-Local verification passed 91 unit/API tests and a DOM interaction check covering summary-first navigation, separate detail/stream/contract views, on-demand evidence, read-only requests and model-output escaping. Nineteen PostgreSQL integration cases remain separately validated through the embedded database adapter. Chromium launch was blocked by the sandbox's macOS process-service restriction; desktop/mobile Playwright execution and screenshots remain to be verified outside that restriction.
+Local verification passed 96 unit/API tests and a DOM interaction check covering summary-first navigation, separate detail/stream/contract views, on-demand evidence, read-only requests and model-output escaping. Twenty-two PostgreSQL integration cases remain separately validated through the embedded database adapter. Chromium launch was blocked by the sandbox's macOS process-service restriction; desktop/mobile Playwright execution and screenshots remain to be verified outside that restriction.

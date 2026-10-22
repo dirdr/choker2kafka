@@ -1,8 +1,15 @@
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("/static/vendor/inter-latin-wght-normal.woff2") format("woff2");
+}
 :root {
-  --surface: #17191d;
-  --panel: #1d2025;
-  --panel-hover: #252930;
-  --line: #30343c;
+  --surface: #0b0d10;
+  --panel: #111419;
+  --panel-hover: #1b2028;
+  --line: #292e37;
   --muted: #9ba3af;
   --ink: #e5e8ed;
   --accent: #ed9b54;
@@ -11,19 +18,19 @@
   --warning: #e2ba74;
   --tblr-primary: #ed9b54;
   --tblr-primary-rgb: 237, 155, 84;
-  --tblr-body-bg: #17191d;
+  --tblr-body-bg: #0b0d10;
   --tblr-body-color: #e5e8ed;
-  --tblr-card-bg: #1d2025;
-  --tblr-border-color: #30343c;
+  --tblr-card-bg: #111419;
+  --tblr-border-color: #292e37;
   --tblr-font-sans-serif:
-    -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 * {
   box-sizing: border-box;
 }
 body {
   margin: 0;
-  font-size: 13px;
+  font-size: 15px;
   background: var(--surface);
   color: var(--ink);
 }
@@ -86,7 +93,7 @@ pre {
   position: fixed;
   inset: 0 auto 0 0;
   width: 190px;
-  background: #111317;
+  background: #080a0d;
   border-right: 1px solid var(--line);
   display: flex;
   flex-direction: column;
@@ -99,7 +106,7 @@ pre {
   align-items: center;
   text-decoration: none;
   color: var(--ink);
-  font-size: 23px;
+  font-size: 26px;
   font-weight: 650;
   letter-spacing: -1px;
   padding: 0 9px 30px;
@@ -111,7 +118,7 @@ pre {
   color: var(--accent);
 }
 .workspace-label {
-  font-size: 10px;
+  font-size: 12px;
   letter-spacing: 1.5px;
   color: var(--muted);
   padding: 0 12px 12px;
@@ -148,7 +155,7 @@ pre {
 .nav-count {
   margin-left: auto;
   font:
-    11px ui-monospace,
+    12px ui-monospace,
     monospace;
   background: #ed9b541c;
   padding: 1px 6px;
@@ -164,14 +171,14 @@ pre {
   overflow-wrap: anywhere;
 }
 .environment-label {
-  font-size: 10px;
+  font-size: 12px;
   letter-spacing: 1px;
   color: var(--muted);
 }
 .sidebar-bottom a {
   color: var(--muted);
   text-decoration: none;
-  font-size: 12px;
+  font-size: 14px;
   margin-top: 15px;
 }
 .sidebar-bottom img {
@@ -190,7 +197,7 @@ pre {
   justify-content: space-between;
   align-items: center;
   gap: 16px;
-  background: #17191df5;
+  background: #0b0d10f5;
 }
 .breadcrumb-label {
   color: var(--muted);
@@ -207,7 +214,7 @@ pre {
   align-items: center;
 }
 .live-indicator {
-  font-size: 11px;
+  font-size: 13px;
   color: var(--good);
   display: flex;
   gap: 6px;
@@ -241,16 +248,8 @@ pre {
   border-color: #626b77;
   color: #fff;
 }
-.btn-primary {
-  --tblr-btn-bg: var(--accent);
-  --tblr-btn-color: #17191d;
-  --tblr-btn-border-color: var(--accent);
-  --tblr-btn-hover-bg: #f5b57b;
-  --tblr-btn-hover-color: #17191d;
-  --tblr-btn-hover-border-color: #f5b57b;
-}
 .btn-sm {
-  font-size: 12px;
+  font-size: 14px;
   min-height: 29px;
 }
 main {
@@ -266,7 +265,7 @@ main {
   margin-bottom: 22px;
 }
 h1 {
-  font-size: 22px;
+  font-size: 26px;
   letter-spacing: -0.5px;
   font-weight: 550;
 }
@@ -281,17 +280,17 @@ h1 {
   text-align: right;
 }
 .model-label span {
-  font-size: 9px;
+  font-size: 12px;
   letter-spacing: 1.3px;
   color: var(--muted);
 }
 .model-label strong {
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 500;
 }
 .model-label small {
   color: var(--muted);
-  font-size: 10px;
+  font-size: 12px;
 }
 .metrics {
   display: grid;
@@ -314,16 +313,16 @@ h1 {
 }
 .metric > span {
   color: #c1c7d0;
-  font-size: 11px;
+  font-size: 13px;
 }
 .metric strong {
   font-weight: 500;
-  font-size: 25px;
+  font-size: 28px;
   line-height: 1.2;
   letter-spacing: -0.7px;
 }
 .metric small {
-  font-size: 10px;
+  font-size: 12px;
   color: var(--muted);
 }
 .good {
@@ -358,11 +357,11 @@ h1 {
   gap: 10px;
 }
 .panel-heading h2 {
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 500;
 }
 .panel-heading > span {
-  font-size: 9px;
+  font-size: 12px;
   color: var(--muted);
 }
 canvas {
@@ -375,7 +374,7 @@ canvas {
   display: flex;
   justify-content: space-between;
   color: var(--muted);
-  font-size: 9px;
+  font-size: 12px;
   margin-top: 4px;
 }
 .view-panel {
@@ -399,22 +398,22 @@ canvas {
   gap: 12px;
 }
 .workspace-toolbar h2 {
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 600;
 }
 .workspace-toolbar span {
-  font-size: 10px;
+  font-size: 12px;
   color: var(--muted);
 }
 .filter-label {
   display: flex;
   gap: 8px;
   align-items: center;
-  font-size: 10px;
+  font-size: 12px;
   color: var(--muted);
 }
 .form-select-sm {
-  font-size: 11px;
+  font-size: 13px;
   min-height: 27px;
   padding-top: 3px;
   padding-bottom: 3px;
@@ -433,62 +432,13 @@ canvas {
   border-color: var(--accent);
   box-shadow: 0 0 0 2px #ed9b5422;
 }
-.incident-workspace {
-  display: grid;
-  grid-template-columns: 270px minmax(0, 1fr);
-  min-height: 420px;
-}
-.incident-list {
-  border-right: 1px solid var(--line);
-  max-height: 850px;
-  overflow-y: auto;
-}
-.incident-row {
-  display: block;
-  position: relative;
-  padding: 16px;
-  text-align: left;
-  border: 0;
-  border-bottom: 1px solid var(--line);
-  background: transparent;
-  width: 100%;
-  color: var(--ink);
-}
-.incident-row:hover {
-  background: var(--panel-hover);
-}
-.incident-row.selected {
-  background: #ed9b5409;
-  box-shadow: inset 2px 0 var(--accent);
-}
-.incident-row-heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 10px;
-}
-.incident-row h3 {
-  font-size: 12px;
-  font-weight: 550;
-  line-height: 1.6;
-  overflow-wrap: anywhere;
-}
-.incident-row p,
-.incident-row small {
-  font-size: 10px;
-  color: var(--muted);
-}
-.incident-row p {
-  margin: 4px 0 10px;
-}
 .badge-state {
   display: inline-flex;
   align-items: center;
   border: 1px solid #59616d50;
   border-radius: 3px;
   padding: 2px 6px;
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 500;
   line-height: 1.5;
   color: #c1c7d0;
@@ -517,12 +467,12 @@ canvas {
   gap: 12px;
 }
 .detail-heading h2 {
-  font-size: 17px;
+  font-size: 19px;
   font-weight: 550;
   overflow-wrap: anywhere;
 }
 .detail-heading p {
-  font-size: 10px;
+  font-size: 12px;
   color: var(--muted);
   margin: 6px 0 15px;
 }
@@ -532,7 +482,7 @@ canvas {
   gap: 10px 20px;
   padding: 10px 0 16px;
   border-bottom: 1px solid var(--line);
-  font-size: 10px;
+  font-size: 12px;
 }
 .detail-metadata > span {
   display: flex;
@@ -557,11 +507,11 @@ canvas {
   margin-bottom: 14px;
 }
 .section-heading h3 {
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 550;
 }
 .section-heading small {
-  font-size: 10px;
+  font-size: 12px;
   color: var(--muted);
 }
 .timeline {
@@ -595,20 +545,20 @@ canvas {
   background: var(--accent);
 }
 .timeline h4 {
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 500;
   margin-bottom: 3px;
   overflow-wrap: anywhere;
 }
 .timeline p {
-  font-size: 10px;
+  font-size: 12px;
   color: var(--muted);
   line-height: 1.6;
 }
 .timeline time {
   display: block;
   color: var(--muted);
-  font-size: 9px;
+  font-size: 12px;
   margin-top: 5px;
 }
 .text-button {
@@ -616,7 +566,7 @@ canvas {
   background: none;
   padding: 0;
   color: var(--accent);
-  font-size: 10px;
+  font-size: 12px;
   text-align: left;
 }
 .text-button:hover {
@@ -625,7 +575,7 @@ canvas {
 .attempt-select {
   width: 100%;
   margin-bottom: 12px;
-  font-size: 10px;
+  font-size: 12px;
 }
 .run-summary {
   display: flex;
@@ -634,11 +584,11 @@ canvas {
   margin-bottom: 12px;
 }
 .run-summary span {
-  font-size: 9px;
+  font-size: 12px;
   color: var(--muted);
 }
 .run-model {
-  font-size: 10px;
+  font-size: 12px;
   color: var(--muted);
   overflow-wrap: anywhere;
   margin-bottom: 16px;
@@ -648,7 +598,7 @@ canvas {
   padding-left: 14px;
 }
 .finding h4 {
-  font-size: 10px;
+  font-size: 12px;
   color: var(--muted);
   font-weight: 500;
   margin: 14px 0 5px;
@@ -658,7 +608,7 @@ canvas {
 }
 .finding p,
 .finding li {
-  font-size: 11px;
+  font-size: 13px;
   line-height: 1.75;
   overflow-wrap: anywhere;
 }
@@ -682,7 +632,7 @@ canvas {
   background: transparent;
   color: var(--muted);
   font:
-    9px ui-monospace,
+    12px ui-monospace,
     monospace;
 }
 .reference:hover {
@@ -697,18 +647,18 @@ canvas {
   margin-bottom: 12px;
 }
 .error-panel h4 {
-  font-size: 11px;
+  font-size: 13px;
   color: var(--bad);
   margin-bottom: 6px;
 }
 .error-panel p,
 .error-panel li {
-  font-size: 11px;
+  font-size: 13px;
   line-height: 1.65;
   color: #c2c7ce;
 }
 .error-panel code {
-  font-size: 10px;
+  font-size: 12px;
 }
 .error-panel .btn {
   margin-top: 12px;
@@ -717,19 +667,16 @@ canvas {
   padding: 48px 20px;
   text-align: center;
   color: var(--muted);
-  font-size: 12px;
+  font-size: 14px;
 }
 .empty-state h3 {
-  font-size: 14px;
+  font-size: 16px;
   color: var(--ink);
   margin-bottom: 8px;
 }
 .empty-state p {
   line-height: 1.8;
-  font-size: 11px;
-}
-.incident-list > .empty-state {
-  padding: 30px 16px;
+  font-size: 13px;
 }
 .source-errors {
   padding: 12px 14px;
@@ -737,7 +684,7 @@ canvas {
   background: #e2ba740d;
   border: 1px solid #e2ba7433;
   color: var(--warning);
-  font-size: 11px;
+  font-size: 13px;
   border-radius: 4px;
 }
 .workbench-footer {
@@ -745,19 +692,19 @@ canvas {
   justify-content: space-between;
   gap: 12px;
   color: var(--muted);
-  font-size: 9px;
+  font-size: 12px;
   padding: 14px 0;
 }
 .table {
   --tblr-table-bg: transparent;
   --tblr-table-border-color: var(--line);
-  font-size: 11px;
+  font-size: 13px;
   margin: 0;
 }
 .table thead th {
-  font-size: 9px;
+  font-size: 12px;
   letter-spacing: 0.3px;
-  background: #191c21;
+  background: #0d1015;
   color: var(--muted);
   font-weight: 500;
   padding: 12px 16px;
@@ -771,7 +718,7 @@ canvas {
   flex-wrap: wrap;
   padding: 16px;
   border-bottom: 1px solid var(--line);
-  font-size: 11px;
+  font-size: 13px;
   color: var(--muted);
 }
 .configuration-strip strong {
@@ -787,28 +734,28 @@ canvas {
   margin-top: 18px;
 }
 .contract-entry h3 {
-  font-size: 13px;
+  font-size: 15px;
   margin-bottom: 8px;
 }
 .contract-entry p {
-  font-size: 10px;
+  font-size: 12px;
   color: var(--muted);
   margin-bottom: 12px;
 }
 .contract-rule {
-  background: #17191d;
+  background: #0b0d10;
   padding: 12px;
   border: 1px solid var(--line);
   border-radius: 4px;
   margin-top: 10px;
-  font-size: 11px;
+  font-size: 13px;
 }
 .contract-rule dl {
   display: grid;
   grid-template-columns: 140px 1fr;
   gap: 6px;
   margin: 10px 0 0;
-  font-size: 10px;
+  font-size: 12px;
 }
 .contract-rule dt {
   font-weight: 400;
@@ -850,10 +797,10 @@ dialog::backdrop {
   margin-bottom: 22px;
 }
 .dialog-heading h2 {
-  font-size: 17px;
+  font-size: 19px;
 }
 .dialog-heading p {
-  font-size: 11px;
+  font-size: 13px;
   color: var(--muted);
   margin-top: 6px;
   overflow-wrap: anywhere;
@@ -864,10 +811,10 @@ dialog::backdrop {
   margin-top: 22px;
 }
 .form-label {
-  font-size: 12px;
+  font-size: 14px;
 }
 .form-hint {
-  font-size: 11px;
+  font-size: 13px;
   color: var(--muted);
 }
 .evidence-dialog {
@@ -876,20 +823,16 @@ dialog::backdrop {
 .evidence-dialog pre {
   margin: 0;
   padding: 18px;
-  background: #121419;
+  background: #090b0e;
   border: 1px solid var(--line);
   color: #cbd2dd;
-  font-size: 11px;
+  font-size: 13px;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   max-height: 60dvh;
   overflow: auto;
 }
-@media (min-width: 1600px) {
-  .incident-workspace {
-    grid-template-columns: 300px minmax(0, 1fr);
-  }
-}
+
 @media (max-width: 1100px) {
   .sidebar {
     width: 155px;
@@ -905,9 +848,6 @@ dialog::backdrop {
   .topbar {
     padding: 0 18px;
   }
-  .incident-workspace {
-    grid-template-columns: 230px minmax(0, 1fr);
-  }
   .detail-columns {
     grid-template-columns: 1fr;
   }
@@ -918,7 +858,7 @@ dialog::backdrop {
     padding: 14px 12px;
   }
   .metric strong {
-    font-size: 23px;
+    font-size: 26px;
   }
 }
 @media (max-width: 760px) {
@@ -948,7 +888,7 @@ dialog::backdrop {
   .nav-item {
     padding: 9px;
     gap: 5px;
-    font-size: 11px;
+    font-size: 13px;
     margin: 0;
   }
   .nav-item img {
@@ -965,21 +905,14 @@ dialog::backdrop {
     padding: 0 14px;
   }
   .breadcrumb-label {
-    font-size: 11px;
+    font-size: 13px;
     gap: 8px;
   }
   .topbar-actions {
     gap: 6px;
   }
   .live-indicator {
-    font-size: 10px;
-  }
-  #operator-button {
-    font-size: 0;
-    gap: 0;
-  }
-  #operator-button img {
-    width: 17px;
+    font-size: 12px;
   }
   main {
     padding: 16px 12px;
@@ -989,20 +922,20 @@ dialog::backdrop {
     gap: 12px;
   }
   h1 {
-    font-size: 19px;
+    font-size: 22px;
   }
   .page-heading p {
-    font-size: 11px;
+    font-size: 13px;
     max-width: 220px;
   }
   .model-label {
     max-width: 190px;
   }
   .model-label strong {
-    font-size: 9px;
+    font-size: 12px;
   }
   .model-label small {
-    font-size: 9px;
+    font-size: 12px;
   }
   .metrics {
     grid-template-columns: 1fr 1fr;
@@ -1017,35 +950,15 @@ dialog::backdrop {
     border-bottom: 1px solid var(--line);
   }
   .metric strong {
-    font-size: 23px;
+    font-size: 26px;
   }
   .metric small {
-    font-size: 9px;
+    font-size: 12px;
   }
   .charts {
     grid-template-columns: 1fr;
     gap: 9px;
     margin-bottom: 16px;
-  }
-  .incident-workspace {
-    grid-template-columns: 1fr;
-  }
-  .incident-list {
-    max-height: 210px;
-    border-right: 0;
-    border-bottom: 1px solid var(--line);
-  }
-  .incident-row {
-    padding: 12px 14px;
-  }
-  .incident-row h3 {
-    font-size: 11px;
-  }
-  .incident-row p {
-    margin-bottom: 5px;
-  }
-  .incident-row-heading {
-    margin-bottom: 5px;
   }
   .incident-detail {
     padding: 16px;
@@ -1058,7 +971,7 @@ dialog::backdrop {
     flex-direction: column;
   }
   .detail-heading h2 {
-    font-size: 15px;
+    font-size: 17px;
   }
   .workbench-footer {
     flex-direction: column;

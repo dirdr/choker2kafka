@@ -97,7 +97,7 @@ Eligible-memory retrieval and capture remain part of the later investigation/mem
 - [x] Display the configured model and each run's actual model.
 - [ ] Add an authenticated model selector if time permits; Runtime model configuration already works.
 - [x] Display original investigation tool activity, status, duration and findings through compact polling.
-- [x] Add revision-checked manual producer controls and explicit paid retries; keep operator tokens in tab memory.
+- [x] Keep manual producer changes and paid retries in Bruno/API; the workbench is read-only and uses no operator token.
 - [x] Verify frontend behavior through API and DOM checks; add a pinned Playwright fixture/live harness.
 - [ ] Verify desktop/mobile rendering with Playwright outside the sandbox launch restriction.
 - [ ] Redeploy and test the workbench against the live captured incident.
@@ -163,7 +163,7 @@ The patch body contains `expected_revision`, `event_time_unit` and `reason`. Use
 
 Run tests with `uv run python -m unittest discover -s tests -v`. Set `TEST_DATABASE_URL` to a dedicated TLS-enabled PostgreSQL test database to include integration tests; those tests apply migrations, change test producer configuration and retain append-only evidence. They are skipped when that variable is absent. Do not point the integration suite at the running demo database.
 
-Current local result: 91 unit/API tests passed; nineteen network integration tests are skipped without `TEST_DATABASE_URL`. Those nineteen repository test cases also passed against isolated embedded PostgreSQL through a temporary test adapter, validating migrations, SQL, transactions, deduplication, restart identity and evidence immutability. This does not validate psycopg/TLS/network behavior against Aiven. The native PostgreSQL test server was blocked by sandbox shared-memory permissions. Lint, formatting and lockfile checks passed.
+Current local result: 96 unit/API tests passed; twenty-two network integration tests are skipped without `TEST_DATABASE_URL`. Those twenty-two repository test cases also passed against isolated embedded PostgreSQL through a temporary test adapter, validating migrations, SQL, transactions, deduplication, restart identity and evidence immutability. This does not validate psycopg/TLS/network behavior against Aiven. The native PostgreSQL test server was blocked by sandbox shared-memory permissions. Lint, formatting and lockfile checks passed.
 
 See [the architecture views](docs/architecture/index.md), [the table inventory](docs/architecture/data-model.md) and [contract definitions/live verification](docs/contracts.md). The next implementation slice is proposal/approval policy and deterministic recovery after live investigation verification.
 
@@ -171,7 +171,7 @@ Investigation smoke: real Anthropic calls using the production Pydantic AI agent
 
 Live investigation hardening: a captured seconds incident reproduced a malformed structured result (array field encoded as text, required fields missing). Strict output plus one bounded correction and a smaller labelled sample passed a real model run against that frozen incident: two requests, 9,360 input tokens and 710 output tokens. Deployed confirmation of this patch remains pending. The submission deliverables and demo journey are mapped in [the submission plan](docs/submission.md).
 
-The workbench is available at `/` after redeployment, with direct incident links at `/incidents/{id}`. See [workbench deployment and checks](docs/workbench.md). The operator requested the frontend before the remediation slice; protected manual producer changes are available, while agent approvals, execution and verified recovery remain pending.
+The workbench is available at `/` after redeployment, with direct incident links at `/incidents/{id}`. See [workbench deployment and checks](docs/workbench.md). The operator requested the frontend before the remediation slice; manual changes stay in Bruno/API, while PR-based repair, verified recovery and replay remain pending.
 
 ## Latest operator feedback
 
@@ -181,3 +181,5 @@ The workbench is available at `/` after redeployment, with direct incident links
 - [x] Make the workbench read-only; use Bruno/API for producer changes and paid retries.
 - [ ] Add true isolated replay with fresh model calls; historical tool activity is already visible.
 - [ ] Implement the agreed producer-config PR workflow and resolve only after merge/deployment and fresh recovery proof.
+
+- [x] Darken the workbench and increase text sizes with a self-hosted Inter font.

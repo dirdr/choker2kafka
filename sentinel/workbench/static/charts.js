@@ -19,7 +19,7 @@ export function drawChart(canvas, samples, key, color, fixedMax) {
     ctx.lineTo(width, y);
     ctx.stroke();
   }
-  ctx.font = "9px monospace";
+  ctx.font = "11px monospace";
   ctx.fillStyle = "#9ba3af";
   ctx.fillText(String(Math.round(max)), 2, 8);
   ctx.fillText("0", 2, height - 1);
