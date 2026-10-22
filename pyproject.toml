@@ -25,3 +25,4 @@ environments = ["sys_platform == 'darwin'", "sys_platform == 'linux'"]
 "sentinel/investigation/service.py" = ["BLE001"]
 
 "sentinel/producer/service.py" = ["BLE001"]
+"sentinel/repair/service.py" = ["BLE001"]
