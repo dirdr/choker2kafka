@@ -12,6 +12,7 @@ templates = Jinja2Templates(directory=ROOT / "templates")
 
 @router.get("/", response_class=HTMLResponse)
 @router.get("/stream", response_class=HTMLResponse)
+@router.get("/producers", response_class=HTMLResponse)
 @router.get("/contracts", response_class=HTMLResponse)
 @router.get("/incidents/{incident_id}", response_class=HTMLResponse)
 def workbench(request: Request, incident_id: UUID | None = None):

@@ -44,6 +44,7 @@
         <button class="nav-item" data-view="contracts">
           <img src="/static/vendor/icons/database.svg" alt="" />Contracts
         </button>
+        <button class="nav-item" data-view="producers"><img src="/static/vendor/icons/database.svg" alt="" />Producers</button>
       </nav>
       <div class="sidebar-bottom">
         <span class="environment-label">KAFKA</span
@@ -178,6 +179,10 @@
           <div id="contracts-body" class="contracts-body">
             Loading contracts…
           </div>
+        </section>
+        <section id="view-producers" class="view-panel" hidden>
+          <div class="workspace-toolbar"><h2>Producer sources</h2><span id="producer-sync-status">Loading source…</span></div>
+          <div id="producers-body">Loading producers…</div>
         </section>
         <footer class="workbench-footer">
           <span id="last-updated">Waiting for data</span

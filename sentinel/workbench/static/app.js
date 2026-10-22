@@ -12,7 +12,7 @@ const byId = (id) => document.getElementById(id);
 const state = {
   view: document.body.dataset.incidentId
     ? "detail"
-    : { "/stream": "stream", "/contracts": "contracts" }[location.pathname] ||
+    : { "/stream": "stream", "/contracts": "contracts", "/producers": "producers" }[location.pathname] ||
       "incidents",
   incidents: [],
   contracts: [],
@@ -20,6 +20,7 @@ const state = {
   incident: null,
   runs: [],
   run: null,
+  repair: null,
   chosenRun: null,
   events: [],
   paused: false,
@@ -82,23 +83,29 @@ function activityMarkup(incident, run) {
       const key = activity.tool_call_id || activity.activity_id;
       const call = calls.get(key) || { name: activity.tool_name, at: activity.recorded_at };
       if (activity.phase === "returned") call.returned = activity;
+      if (activity.phase === "started") call.purpose = activity.purpose;
       calls.set(key, call);
     }
     for (const call of calls.values()) {
       const result = call.returned;
       rows.push({
-        at: call.at, name: call.name,
+        at: call.at, name: call.name, purpose: call.purpose, summary: result?.public_summary,
         status: result ? "Returned" : run.status === "failed" ? "Interrupted" : "Running",
         result: result ? `<button class="text-button" data-action="tool" data-activity="${esc(result.activity_id)}">${result.document_count == null ? esc(label(result.result_status || "Inspect result")) : `${esc(result.document_count)} documents`}</button>` : "—",
       });
     }
     if (["completed", "failed"].includes(run.status)) rows.push({ at: run.finished_at, name: run.status === "failed" ? "Investigation failed" : "Finding recorded", status: label(run.status), result: "—" });
   }
-  return `<div class="table-responsive"><table class="table activity-table"><thead><tr><th>Time · UTC</th><th>Activity</th><th>Status</th><th>Evidence</th></tr></thead><tbody>${rows.map((row) => `<tr><td class="mono">${esc(formatTime(row.at, true))}</td><td>${esc(row.name)}</td><td>${esc(row.status)}</td><td>${row.result}</td></tr>`).join("")}</tbody></table></div>`;
+  for (const entry of incident.timeline || []) {
+    if (entry.kind.startsWith("repair_") || entry.kind === "recovery_verified")
+      rows.push({at: entry.recorded_at, name: label(entry.kind), status: "Recorded", result: "Recorded"});
+  }
+  rows.sort((a, b) => new Date(a.at) - new Date(b.at));
+  return `<div class="table-responsive"><table class="table activity-table"><thead><tr><th>Time · UTC</th><th>Activity</th><th>Status</th><th>Evidence</th></tr></thead><tbody>${rows.map((row) => `<tr><td class="mono">${esc(formatTime(row.at, true))}</td><td>${esc(row.name)}${row.purpose ? `<p class="activity-explanation">${esc(row.purpose)}</p>` : ""}${row.summary ? `<p class="activity-explanation">${esc(row.summary)}</p>` : ""}</td><td>${esc(row.status)}</td><td>${row.result}</td></tr>`).join("")}</tbody></table></div>`;
 }
 
 function findingMarkup(finding) {
-  return `<section class="finding"><div class="finding-verdict">${badge(finding.conclusion)}<span class="muted">${esc(finding.confidence)} confidence</span></div><div class="finding-primary"><div><h4>Likely cause</h4><p>${esc(finding.likely_cause)}</p></div><div><h4>Recommendation</h4><p>${esc(finding.recommendation)}</p></div></div><details id="finding-evidence" class="disclosure"><summary>Supporting evidence</summary><table class="table facts-table"><tbody><tr><th scope="row">Alternatives</th><td><ul>${(finding.alternatives || []).map((item) => `<li>${esc(item)}</li>`).join("")}</ul></td></tr><tr><th scope="row">Declared consumers</th><td>${(finding.affected_consumers || []).map(esc).join(", ") || "Not established"}</td></tr><tr><th scope="row">Attribution</th><td>${finding.attribution ? `${esc(finding.attribution.producer_id)} · r${esc(finding.attribution.configuration_revision)}` : "Not established"}</td></tr><tr><th scope="row">Confidence</th><td>${esc(finding.confidence_rationale)}</td></tr><tr><th scope="row">References</th><td><div class="references">${(finding.evidence_ids || []).map((id) => `<button class="reference" title="${esc(id)}" data-action="reference" data-reference="${esc(id)}">${esc(id)}</button>`).join("")}</div></td></tr></tbody></table></details></section>`;
+  return `<section class="finding"><div class="finding-verdict">${badge(finding.conclusion)}<span class="muted">${esc(finding.confidence)} confidence</span></div><div class="finding-primary"><div><h4>Likely cause</h4><p>${esc(finding.likely_cause)}</p></div><div><h4>Recommendation</h4><p>${esc(finding.recommendation)}</p></div></div>${finding.checks?.length ? `<div class="table-responsive"><table class="table checks-table"><thead><tr><th>Check</th><th>Result</th></tr></thead><tbody>${finding.checks.map((check) => `<tr><th scope="row">${esc(check.question)}</th><td>${esc(check.result)}<div class="references">${check.evidence_ids.map((id) => `<button class="reference" data-action="reference" data-reference="${esc(id)}">${esc(id)}</button>`).join("")}</div></td></tr>`).join("")}</tbody></table></div>` : ""}<details id="finding-evidence" class="disclosure"><summary>Supporting evidence</summary><table class="table facts-table"><tbody><tr><th scope="row">Alternatives</th><td><ul>${(finding.alternatives || []).map((item) => `<li>${esc(item)}</li>`).join("")}</ul></td></tr><tr><th scope="row">Declared consumers</th><td>${(finding.affected_consumers || []).map(esc).join(", ") || "Not established"}</td></tr><tr><th scope="row">Attribution</th><td>${finding.attribution ? `${esc(finding.attribution.producer_id)} · r${esc(finding.attribution.configuration_revision)}` : "Not established"}</td></tr><tr><th scope="row">Confidence</th><td>${esc(finding.confidence_rationale)}</td></tr><tr><th scope="row">References</th><td><div class="references">${(finding.evidence_ids || []).map((id) => `<button class="reference" title="${esc(id)}" data-action="reference" data-reference="${esc(id)}">${esc(id)}</button>`).join("")}</div></td></tr></tbody></table></details></section>`;
 }
 
 function runMarkup(run) {
@@ -112,11 +119,21 @@ function runMarkup(run) {
   return `<div class="run-toolbar"><label for="attempt-select">Attempt</label><select id="attempt-select" class="form-select form-select-sm attempt-select" aria-label="Investigation attempt">${state.runs.map((attempt, index) => `<option value="${esc(attempt.investigation_id)}" ${run.investigation_id === attempt.investigation_id ? "selected" : ""}>${index === 0 ? "Latest" : "Earlier"} · ${esc(label(attempt.status))}</option>`).join("")}</select><span class="run-model mono">${esc(run.model_id)}</span>${badge(run.status)}</div>${result}<details id="run-diagnostics" class="disclosure"><summary>Execution details · ${esc(duration(run.duration_ms))}</summary><table class="table facts-table"><tbody><tr><th scope="row">Model / agent</th><td>${esc(run.model_id)} / ${esc(run.agent_version)}</td></tr><tr><th scope="row">Tokens reported / allowance</th><td class="mono">${esc(tokens.toLocaleString())} / ${esc(run.token_limit.toLocaleString())}</td></tr><tr><th scope="row">Deadline</th><td>${esc(run.deadline_seconds ?? 45)}s</td></tr><tr><th scope="row">Requests / tool calls</th><td>${esc(run.usage?.requests ?? 0)} / ${esc(run.usage?.tool_calls ?? 0)}</td></tr><tr><th scope="row">Run ID</th><td class="mono">${esc(run.investigation_id)}</td></tr>${run.error_detail?.fields ? `<tr><th scope="row">Validation errors</th><td>${run.error_detail.fields.map((field) => `${esc(field.path)}: ${esc(label(field.type))}`).join("<br>")}</td></tr>` : ""}</tbody></table></details>`;
 }
 
+function repairMarkup(repair) {
+  if (!repair || repair.status === "awaiting_supported_finding") return "";
+  const proposal = repair.proposal || {};
+  const changes = Object.entries(proposal.after || {}).filter(([key, value]) => JSON.stringify(value) !== JSON.stringify(proposal.before?.[key]));
+  const validUrl = repair.pr_url && /^https:\/\/github\.com\/[a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-]+\/pull\/\d+$/.test(repair.pr_url);
+  const windows = repair.recovery_windows || [];
+  const passed = windows.filter((window) => window.passed).length;
+  return `<section class="repair-section"><div class="section-heading"><h3>Repair</h3>${validUrl ? `<a class="text-button" href="${esc(repair.pr_url)}" target="_blank" rel="noopener">View PR #${esc(repair.pr_number)}</a>` : ""}</div><div class="table-responsive"><table class="table repair-table"><thead><tr><th>Status</th><th>Proposed change</th><th>Recovery</th></tr></thead><tbody><tr><td>${badge(repair.status)}${repair.error_code || repair.detail ? `<p class="row-meta">${esc(label(repair.error_code || repair.detail))}</p>` : ""}</td><td>${changes.map(([key, value]) => `<span class="mono">${esc(key)}: ${esc(proposal.before[key])} → ${esc(value)}</span>`).join("<br>") || "No writable correction established"}</td><td>${repair.status === "verified" ? "Verified" : repair.status === "merged" ? `${passed}/2 passing windows` : "Awaiting merge and fresh records"}${windows.length ? '<br><button class="text-button" data-action="recovery">Inspect recovery evidence</button>' : ""}</td></tr></tbody></table></div></section>`;
+}
+
 function renderDetail() {
   const incident = state.incident;
   if (!incident || document.activeElement?.id === "attempt-select") return;
   const expanded = [...byId("incident-detail").querySelectorAll("details[open]")].map((element) => element.id);
-  byId("incident-detail").innerHTML = `<div class="detail-heading"><h2>${esc(incident.rule_id)}</h2>${badge(incident.status)}</div><div class="table-responsive"><table class="table incident-context"><thead><tr><th>Stream</th><th>Producer revision</th><th>Contract</th><th>Fields</th></tr></thead><tbody><tr><td>${esc(incident.topic)}</td><td>${esc(incident.producer_id)}${incident.configuration_revision ? ` · r${esc(incident.configuration_revision)}` : ""}</td><td>${esc(incident.contract_id)} v${esc(incident.contract_version)}</td><td>${esc(incident.affected_fields.join(", "))}</td></tr></tbody></table></div><section class="investigation-section"><div class="section-heading"><h3>Investigation</h3><button class="text-button" data-action="signal">Captured signal</button></div>${runMarkup(state.run)}</section><section class="activity-section"><div class="section-heading"><h3>Activity</h3><small>Recorded tool calls · UTC</small></div>${activityMarkup(incident, state.run)}</section>`;
+  byId("incident-detail").innerHTML = `<div class="detail-heading"><h2>${esc(incident.rule_id)}</h2>${badge(incident.status)}</div><div class="table-responsive"><table class="table incident-context"><thead><tr><th>Stream</th><th>Producer revision</th><th>Contract</th><th>Fields</th></tr></thead><tbody><tr><td>${esc(incident.topic)}</td><td>${esc(incident.producer_id)}${incident.configuration_revision ? ` · r${esc(incident.configuration_revision)}` : ""}</td><td>${esc(incident.contract_id)} v${esc(incident.contract_version)}</td><td>${esc(incident.affected_fields.join(", "))}</td></tr></tbody></table></div><section class="investigation-section"><div class="section-heading"><h3>Investigation</h3><button class="text-button" data-action="signal">Captured signal</button></div>${runMarkup(state.run)}</section>${repairMarkup(state.repair)}<section class="activity-section"><div class="section-heading"><h3>Activity</h3><small>Recorded tool calls · UTC</small></div>${activityMarkup(incident, state.run)}</section>`;
   for (const id of expanded) { const element = byId(id); if (element) element.open = true; }
   byId("attempt-select")?.addEventListener("change", (event) => {
     state.chosenRun = event.target.value;
@@ -131,11 +148,12 @@ async function refreshDetail() {
   state.detailController = controller;
   const sequence = ++detailSequence;
   try {
-    const [incident, runs] = await Promise.all([
+    const [incident, runs, repair] = await Promise.all([
       api(`/api/incidents/${state.selected}`, { signal: controller.signal }),
       api(`/api/incidents/${state.selected}/investigations`, {
         signal: controller.signal,
       }),
+      api(`/api/incidents/${state.selected}/repair`, {signal: controller.signal}).catch((error) => ({status: "unavailable", detail: error.message})),
     ]);
     const chosen =
       runs.find((run) => run.investigation_id === state.chosenRun) || runs[0];
@@ -148,6 +166,7 @@ async function refreshDetail() {
     state.incident = incident;
     state.runs = runs;
     state.run = run;
+    state.repair = repair;
     renderDetail();
   } catch (error) {
     if (error.name === "AbortError" || sequence !== detailSequence) return;
@@ -273,6 +292,7 @@ async function tick() {
     await Promise.allSettled([
       state.view === "detail" && state.selected && refreshDetail(),
       state.view === "stream" && refreshEvents(),
+      state.view === "producers" && refreshProducers(),
     ]);
   } catch (error) {
     notify(error.message, true);
@@ -293,7 +313,7 @@ function showView(view) {
     if (active) element.setAttribute("aria-current", "page");
     else element.removeAttribute("aria-current");
   }
-  for (const name of ["incidents", "detail", "stream", "contracts"])
+  for (const name of ["incidents", "detail", "stream", "contracts", "producers"])
     byId(`view-${name}`).hidden = name !== view;
   setText(
     "view-title",
@@ -302,6 +322,7 @@ function showView(view) {
       detail: "Incident",
       stream: "Live stream",
       contracts: "Contracts",
+      producers: "Producers",
     }[view],
   );
   const titles = {
@@ -309,6 +330,7 @@ function showView(view) {
     detail: "Incident details",
     stream: "Live stream",
     contracts: "Contracts",
+    producers: "Producers",
   };
   setText("page-title", titles[view]);
   document.title = `Sentinel · ${titles[view]}`;
@@ -319,6 +341,7 @@ function showView(view) {
       detail: "Captured evidence and recorded agent activity.",
       stream: "Ingestion and recent records.",
       contracts: "Versioned expectations for the stream.",
+      producers: "Configuration revisions and source provenance.",
     }[view],
   );
   if (view === "incidents") {
@@ -330,12 +353,29 @@ function showView(view) {
   const path =
     view === "detail"
       ? `/incidents/${state.selected}`
-      : { incidents: "/", stream: "/stream", contracts: "/contracts" }[view];
+      : { incidents: "/", stream: "/stream", contracts: "/contracts", producers: "/producers" }[view];
   if (path && location.pathname !== path) history.pushState({}, "", path);
   if (view === "stream") {
     refreshEvents();
   }
   if (view === "contracts") loadContracts();
+  if (view === "producers") refreshProducers();
+}
+
+async function refreshProducers() {
+  try {
+    const source = await api("/api/producers");
+    setText("producer-sync-status", `${label(source.worker)}${source.last_error ? " · Sync unavailable" : ""}`);
+    byId("producers-body").innerHTML = `<div class="table-responsive"><table class="table contracts-table"><thead><tr><th>Producer</th><th>Revision</th><th>Source</th><th>Last checked · UTC</th></tr></thead><tbody>${source.producers.map((producer) => {
+      const repository = producer.repository && /^[a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-]+$/.test(producer.repository) ? `https://github.com/${producer.repository}` : null;
+      const file = repository ? `${repository}/blob/${encodeURIComponent(producer.branch)}/producer/config.json` : null;
+      const commit = repository && producer.source_commit ? `${repository}/commit/${encodeURIComponent(producer.source_commit)}` : null;
+      return `<tr><td>${esc(producer.producer_id)}</td><td class="mono">r${esc(producer.revision)}</td><td><details class="disclosure"><summary>${esc(producer.file_path || "Configuration not synchronized")}</summary>${file ? `<p><a href="${esc(file)}" target="_blank" rel="noopener">View on GitHub</a>${commit ? ` · <a href="${esc(commit)}" target="_blank" rel="noopener">Commit ${esc(producer.source_commit.slice(0, 7))}</a>` : ""}</p>` : ""}<pre class="source-preview">${esc(JSON.stringify(producer.configuration || {}, null, 2))}</pre></details></td><td class="mono">${esc(formatTime(producer.checked_at))}</td></tr>`;
+    }).join("")}</tbody></table></div>`;
+  } catch (error) {
+    setText("producer-sync-status", "Unavailable");
+    byId("producers-body").innerHTML = empty("Producer source unavailable", error.message);
+  }
 }
 
 async function loadContracts() {
@@ -366,6 +406,7 @@ async function inspectEvidence(action, target) {
   const run = state.run;
   if (!incident) return;
   try {
+    if (action === "recovery") return showEvidence("Recovery evidence", state.repair?.recovery_windows || []);
     if (action === "signal")
       return showEvidence(
         "Captured signal",
@@ -452,7 +493,7 @@ window.addEventListener("popstate", () => {
   if (match) selectIncident(match[1], false);
   else
     showView(
-      { "/stream": "stream", "/contracts": "contracts" }[location.pathname] ||
+      { "/stream": "stream", "/contracts": "contracts", "/producers": "producers" }[location.pathname] ||
         "incidents",
     );
 });

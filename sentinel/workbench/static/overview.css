@@ -307,3 +307,46 @@ summary:focus-visible {
     padding: 22px;
   }
 }
+.source-preview {
+  margin: 16px 0 0;
+  padding: 16px;
+  background: var(--panel);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  font-size: 13px;
+  max-width: 65ch;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.activity-explanation {
+  max-width: 65ch;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.6;
+  margin-top: 5px;
+  white-space: normal;
+}
+.checks-table {
+  margin: 16px 0;
+}
+.checks-table th {
+  font-weight: 500;
+  width: 35%;
+}
+.checks-table td,
+.checks-table th {
+  white-space: normal;
+  line-height: 1.6;
+  vertical-align: top;
+}
+.repair-section {
+  margin-top: 24px;
+}
+.repair-table {
+  min-width: 560px;
+}
+.repair-table td {
+  vertical-align: top;
+  line-height: 1.7;
+}

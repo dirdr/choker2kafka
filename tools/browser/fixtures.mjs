@@ -111,6 +111,11 @@ export function fixtures() {
         {id: "claude-sonnet-4-6", name: "Claude Sonnet"},
       ],
     },
+    "/api/producers": {
+      worker: "watching", last_error: null,
+      producers: [{producer_id: "checkout", revision: 2, event_time_unit: "seconds", source_commit: "abcdef0123456789", repository: "dirdr/choker2kafka", branch: "main", file_path: "producer/config.json", checked_at: capturedAt, configuration: {producer_id: "checkout", event_time_unit: "seconds"}}],
+    },
+    [`/api/incidents/${incidentId}/repair`]: {status: "awaiting_supported_finding"},
     "/api/stream": {
       worker: "running",
       transport: "flowing",
