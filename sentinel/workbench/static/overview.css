@@ -1,0 +1,84 @@
+.incident-summary-table {
+  min-width: 920px;
+}
+.incident-summary-table td {
+  padding: 20px 18px;
+  vertical-align: top;
+  font-size: 14px;
+}
+.incident-summary-table th {
+  font-size: 12px;
+}
+.incident-link {
+  display: block;
+  font-size: 15px;
+  font-weight: 550;
+  text-decoration: none;
+  color: var(--ink);
+  margin-bottom: 7px;
+}
+.incident-link:hover {
+  color: var(--accent);
+  text-decoration: underline;
+}
+.incident-summary {
+  width: 40%;
+  min-width: 260px;
+}
+.incident-summary p {
+  line-height: 1.7;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.row-meta {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 8px;
+  line-height: 1.6;
+}
+.row-status {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.incident-date {
+  white-space: nowrap;
+  font-size: 12px !important;
+}
+.stream-view {
+  background: transparent;
+  border: 0;
+  overflow: visible;
+}
+.stream-view > .workspace-toolbar,
+.stream-view > .table-responsive,
+.stream-view > .configuration-strip {
+  background: var(--panel);
+  border: 1px solid var(--line);
+}
+.stream-view > .workspace-toolbar {
+  border-radius: 5px 5px 0 0;
+}
+.stream-view > .table-responsive {
+  border-radius: 0 0 5px 5px;
+  border-top: 0;
+}
+.model-label {
+  max-width: 340px;
+}
+@media (max-width: 760px) {
+  .model-label {
+    max-width: 190px;
+  }
+  .model-label strong {
+    font-size: 11px;
+  }
+  .page-heading {
+    gap: 12px;
+  }
+}

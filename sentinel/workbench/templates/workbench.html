@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="dark" />
-    <title>Sentinel · Stream operations</title>
+    <title>Sentinel · Incidents</title>
     <link
       rel="icon"
       type="image/svg+xml"
@@ -12,6 +12,7 @@
     />
     <link rel="stylesheet" href="/static/vendor/tabler-1.7.0.min.css" />
     <link rel="stylesheet" href="/static/workbench.css" />
+    <link rel="stylesheet" href="/static/overview.css" />
     <script type="module" src="/static/app.js"></script>
   </head>
   <body data-incident-id="{{ incident_id }}">
@@ -65,21 +66,17 @@
             class="btn btn-sm btn-outline-secondary"
             aria-pressed="false"
           >
-            Pause</button
-          ><button
-            id="operator-button"
-            class="btn btn-sm btn-outline-secondary"
-          >
-            <img src="/static/vendor/icons/settings.svg" alt="" />Producer
-            controls
+            Pause
           </button>
         </div>
       </header>
       <main id="workspace" tabindex="-1">
         <div class="page-heading">
           <div>
-            <h1 id="page-title">Stream operations</h1>
-            <p>Contract health, incident evidence and agent activity.</p>
+            <h1 id="page-title">Incidents</h1>
+            <p id="page-description">
+              Contract violations and investigation results.
+            </p>
           </div>
           <div class="model-label">
             <span>INVESTIGATOR</span
@@ -93,67 +90,9 @@
           role="status"
           hidden
         ></div>
-        <section class="metrics" aria-label="Live stream metrics">
-          <div class="metric">
-            <span>Transport</span><strong id="metric-transport">…</strong
-            ><small id="metric-transport-detail">Waiting for ingestion</small>
-          </div>
-          <div class="metric">
-            <span>Events / second</span
-            ><strong id="metric-throughput" class="mono">…</strong
-            ><small>Average over the last 10 seconds</small>
-          </div>
-          <div class="metric">
-            <span>Timestamp violations</span
-            ><strong id="metric-failure" class="mono">…</strong
-            ><small id="metric-failure-detail"
-              >Waiting for contract evaluation</small
-            >
-          </div>
-          <div class="metric">
-            <span>Open incidents</span
-            ><strong id="metric-incidents" class="mono">…</strong
-            ><small>Within the latest 20 incidents</small>
-          </div>
-        </section>
-        <section class="charts" aria-label="Metrics since this page opened">
-          <div class="chart-panel">
-            <div class="panel-heading">
-              <h2>Event throughput</h2>
-              <span>events/s · 10s average</span>
-            </div>
-            <canvas
-              id="throughput-chart"
-              height="75"
-              role="img"
-              aria-label="Event throughput since opening this page"
-            ></canvas>
-            <div class="chart-footer">
-              <span id="chart-start">Collecting live samples</span
-              ><span>Since opening this page</span>
-            </div>
-          </div>
-          <div class="chart-panel">
-            <div class="panel-heading">
-              <h2>Contract failure ratio</h2>
-              <span>recent 10s window · %</span>
-            </div>
-            <canvas
-              id="failure-chart"
-              height="75"
-              role="img"
-              aria-label="Contract failure ratio since opening this page"
-            ></canvas>
-            <div class="chart-footer">
-              <span id="chart-samples">Collecting live samples</span
-              ><span>Updates every 5s</span>
-            </div>
-          </div>
-        </section>
         <section id="view-incidents" class="view-panel">
           <div class="workspace-toolbar">
             <div>
-              <h2>Incidents</h2>
               <span id="incident-list-meta">Loading records…</span>
             </div>
             <label class="filter-label"
@@ -167,27 +106,85 @@
               </select></label
             >
           </div>
-          <div class="incident-workspace">
-            <aside
-              id="incident-list"
-              class="incident-list"
-              aria-label="Recent incidents"
-            >
-              <div class="empty-state">Loading incidents…</div>
-            </aside>
-            <article
-              id="incident-detail"
-              class="incident-detail"
-              aria-label="Selected incident"
-            >
-              <div class="empty-state">
-                <h3>Select an incident</h3>
-                <p>Captured signals and investigations appear here.</p>
-              </div>
-            </article>
+          <div
+            id="incident-list"
+            class="incident-overview"
+            aria-label="Recent incidents"
+          >
+            <div class="empty-state">Loading incidents…</div>
           </div>
         </section>
-        <section id="view-stream" class="view-panel" hidden>
+        <section id="view-detail" class="view-panel" hidden>
+          <div class="workspace-toolbar">
+            <button id="back-to-incidents" class="text-button">
+              Back to incidents</button
+            ><span>Recorded evidence and investigation activity</span>
+          </div>
+          <article
+            id="incident-detail"
+            class="incident-detail"
+            aria-label="Selected incident"
+          ></article>
+        </section>
+        <section id="view-stream" class="view-panel stream-view" hidden>
+          <section class="metrics" aria-label="Live stream metrics">
+            <div class="metric">
+              <span>Transport</span><strong id="metric-transport">…</strong
+              ><small id="metric-transport-detail">Waiting for ingestion</small>
+            </div>
+            <div class="metric">
+              <span>Events / second</span
+              ><strong id="metric-throughput" class="mono">…</strong
+              ><small>Average over the last 10 seconds</small>
+            </div>
+            <div class="metric">
+              <span>Timestamp violations</span
+              ><strong id="metric-failure" class="mono">…</strong
+              ><small id="metric-failure-detail"
+                >Waiting for contract evaluation</small
+              >
+            </div>
+            <div class="metric">
+              <span>Open incidents</span
+              ><strong id="metric-incidents" class="mono">…</strong
+              ><small>Within the latest 20 incidents</small>
+            </div>
+          </section>
+          <section class="charts" aria-label="Metrics since this page opened">
+            <div class="chart-panel">
+              <div class="panel-heading">
+                <h2>Event throughput</h2>
+                <span>events/s · 10s average</span>
+              </div>
+              <canvas
+                id="throughput-chart"
+                height="75"
+                role="img"
+                aria-label="Event throughput since opening this page"
+              ></canvas>
+              <div class="chart-footer">
+                <span id="chart-start">Collecting live samples</span
+                ><span>Since opening this page</span>
+              </div>
+            </div>
+            <div class="chart-panel">
+              <div class="panel-heading">
+                <h2>Contract failure ratio</h2>
+                <span>recent 10s window · %</span>
+              </div>
+              <canvas
+                id="failure-chart"
+                height="75"
+                role="img"
+                aria-label="Contract failure ratio since opening this page"
+              ></canvas>
+              <div class="chart-footer">
+                <span id="chart-samples">Collecting live samples</span
+                ><span>Updates every 5s</span>
+              </div>
+            </div>
+          </section>
+
           <div class="workspace-toolbar">
             <div>
               <h2>Live stream</h2>
@@ -255,75 +252,6 @@
         </button>
       </div>
       <pre id="evidence-body" tabindex="0"></pre>
-    </dialog>
-    <dialog id="operator-dialog">
-      <form id="producer-form">
-        <div class="dialog-heading">
-          <div>
-            <h2>Producer configuration</h2>
-            <p id="producer-current">Loading current configuration…</p>
-          </div>
-          <button
-            type="button"
-            class="btn btn-sm btn-outline-secondary"
-            data-close="operator-dialog"
-          >
-            Close
-          </button>
-        </div>
-        <label class="form-label" for="producer-unit">Timestamp unit</label
-        ><select id="producer-unit" class="form-select">
-          <option value="milliseconds">Milliseconds</option>
-          <option value="seconds">Seconds</option>
-          <option value="microseconds">Microseconds</option></select
-        ><label class="form-label mt-3" for="producer-reason">Reason</label
-        ><input
-          id="producer-reason"
-          class="form-control"
-          maxlength="500"
-          required
-          placeholder="Describe this change"
-        />
-        <p class="form-hint mt-3">
-          This changes new Kafka events. The contract stays in effect.
-        </p>
-        <div class="dialog-actions">
-          <button class="btn btn-primary" id="apply-producer" type="submit">
-            Apply configuration
-          </button>
-        </div>
-      </form>
-    </dialog>
-    <dialog id="token-dialog">
-      <form id="token-form">
-        <div class="dialog-heading">
-          <div>
-            <h2>Operator access</h2>
-            <p id="token-action"></p>
-          </div>
-          <button
-            type="button"
-            class="btn btn-sm btn-outline-secondary"
-            data-close="token-dialog"
-          >
-            Cancel
-          </button>
-        </div>
-        <label for="operator-token" class="form-label">Operator token</label
-        ><input
-          id="operator-token"
-          type="password"
-          class="form-control"
-          required
-          autocomplete="off"
-        />
-        <p class="form-hint mt-3">
-          Your token stays in this tab and clears when you reload.
-        </p>
-        <div class="dialog-actions">
-          <button class="btn btn-primary" type="submit">Continue</button>
-        </div>
-      </form>
     </dialog>
   </body>
 </html>

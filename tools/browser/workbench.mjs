@@ -6,7 +6,7 @@ import { fixtures } from "./fixtures.mjs";
 const live = process.argv.includes("--live");
 const base = process.env.SENTINEL_BASE_URL || "http://127.0.0.1:8080";
 const fixture = fixtures();
-const writes = [];
+const requests = [];
 const browser = await chromium.launch({ headless: true });
 try {
   const page = await browser.newPage({
@@ -19,22 +19,8 @@ try {
       const request = route.request();
       const url = new URL(request.url());
       const path = url.pathname + url.search;
-      if (["PATCH", "POST"].includes(request.method())) {
-        writes.push({
-          path,
-          headers: request.headers(),
-          body: request.postDataJSON(),
-        });
-        assert.equal(request.headers().authorization, "Bearer test-only-token");
-        assert.equal(request.method(), "PATCH");
-        const change = request.postDataJSON();
-        assert.equal(change.expected_revision, 2);
-        Object.assign(fixture.configuration, {
-          revision: 3,
-          event_time_unit: change.event_time_unit,
-        });
-        return route.fulfill({ json: fixture.configuration });
-      }
+      requests.push({ path, method: request.method() });
+      assert.equal(request.method(), "GET", "The workbench must be read-only");
       assert.ok(path in fixture.data, `Unexpected API request: ${path}`);
       return route.fulfill({ json: fixture.data[path] });
     });
@@ -48,10 +34,19 @@ try {
   );
   await mkdir("test-results", { recursive: true });
   if (!live) {
-    await page.locator('[data-action="retry"]').waitFor();
-    assert.equal(await page.locator("#metric-throughput").innerText(), "10.0");
-    assert.equal(await page.locator("#metric-failure").innerText(), "100.0%");
-    assert.equal(writes.length, 0);
+    await page.locator(".incident-link").waitFor();
+    assert.equal(await page.locator("#view-detail").isVisible(), false);
+    assert.equal(await page.locator("#view-stream").isVisible(), false);
+    assert.equal(
+      requests.some((request) => request.path.includes("/investigations")),
+      false,
+    );
+    await page.locator(".incident-link").first().click();
+    await page.waitForFunction(() =>
+      document
+        .getElementById("incident-detail")
+        .textContent.includes("Investigation failed"),
+    );
     await page.locator('[data-action="tool"]').click();
     await page.locator("#evidence-dialog[open]").waitFor();
     assert.match(
@@ -59,6 +54,7 @@ try {
       /configuration:checkout:2/,
     );
     await page.locator('[data-close="evidence-dialog"]').click();
+    await page.locator("#back-to-incidents").click();
   }
   await page.screenshot({
     path: `test-results/${live ? "live" : "fixture"}-desktop.png`,
@@ -83,24 +79,6 @@ try {
   );
   if (!live) {
     assert.match(await page.locator("#events-body").innerText(), /1792670400/);
-    await page.locator("#operator-button").click();
-    await page.locator("#operator-dialog[open]").waitFor();
-    await page.locator("#producer-unit").selectOption("milliseconds");
-    await page.locator("#producer-reason").fill("Browser fixture verification");
-    await page.locator("#apply-producer").click();
-    await page.locator("#token-dialog[open]").waitFor();
-    assert.equal(writes.length, 0);
-    await page.locator("#operator-token").fill("test-only-token");
-    await page.locator('#token-form button[type="submit"]').click();
-    await page.waitForFunction(
-      () => !document.getElementById("operator-dialog").open,
-    );
-    assert.equal(writes.length, 1);
-    assert.equal(await page.locator("#operator-token").inputValue(), "");
-    assert.equal(
-      await page.evaluate(() => localStorage.length + sessionStorage.length),
-      0,
-    );
     fixture.run.status = "completed";
     fixture.run.finding = {
       ...fixture.finding,
@@ -109,6 +87,7 @@ try {
     await page.locator("#pause-button").click();
     await page.locator("#pause-button").click();
     await page.locator('[data-view="incidents"]').click();
+    await page.locator(".incident-link").first().click();
     await page.waitForFunction(() =>
       document
         .getElementById("incident-detail")
@@ -131,7 +110,7 @@ try {
   console.log(
     live
       ? "Live read-only browser smoke passed"
-      : "Fixture browser checks passed, including authenticated writes and output escaping",
+      : "Read-only browser checks passed, including incident navigation and output escaping",
   );
 } finally {
   await browser.close();

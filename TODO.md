@@ -172,3 +172,12 @@ Investigation smoke: real Anthropic calls using the production Pydantic AI agent
 Live investigation hardening: a captured seconds incident reproduced a malformed structured result (array field encoded as text, required fields missing). Strict output plus one bounded correction and a smaller labelled sample passed a real model run against that frozen incident: two requests, 9,360 input tokens and 710 output tokens. Deployed confirmation of this patch remains pending. The submission deliverables and demo journey are mapped in [the submission plan](docs/submission.md).
 
 The workbench is available at `/` after redeployment, with direct incident links at `/incidents/{id}`. See [workbench deployment and checks](docs/workbench.md). The operator requested the frontend before the remediation slice; protected manual producer changes are available, while agent approvals, execution and verified recovery remain pending.
+
+## Latest operator feedback
+
+- [x] Open one incident per faulty configuration revision, with per-revision sample checks and immutable evidence.
+- [x] Keep the home page focused on incident summaries; open details only on selection.
+- [x] Move stream graphs to `/stream` and contract definitions to `/contracts`.
+- [x] Make the workbench read-only; use Bruno/API for producer changes and paid retries.
+- [ ] Add true isolated replay with fresh model calls; historical tool activity is already visible.
+- [ ] Implement the agreed producer-config PR workflow and resolve only after merge/deployment and fresh recovery proof.

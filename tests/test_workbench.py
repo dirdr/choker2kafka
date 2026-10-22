@@ -11,7 +11,7 @@ class WorkbenchTests(unittest.IsolatedAsyncioTestCase):
         status, headers, content = await raw_request(app, "/")
         self.assertEqual(status, 200)
         self.assertIn(b"text/html", headers[b"content-type"])
-        self.assertIn(b"Stream operations", content)
+        self.assertIn(b">Incidents</h1>", content)
         self.assertIn(b"/static/app.js", content)
         self.assertIn(b"frame-ancestors 'none'", headers[b"content-security-policy"])
         self.assertEqual(headers[b"cache-control"], b"no-store")
@@ -42,9 +42,30 @@ class WorkbenchTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(status, 200)
         self.assertEqual(body, {"status": "ok"})
 
-    async def test_operator_access_is_not_embedded_in_html(self):
+    async def test_workbench_has_no_operator_controls_or_credentials(self):
         status, _, content = await raw_request(app, "/")
         self.assertEqual(status, 200)
-        self.assertIn(b'type="password"', content)
-        self.assertNotIn(b"localStorage", content)
-        self.assertNotIn(b"sessionStorage", content)
+        self.assertNotIn(b"operator-token", content)
+        self.assertNotIn(b"producer-form", content)
+        self.assertNotIn(b"operator-button", content)
+        self.assertNotIn(b"csrf", content)
+        self.assertIn(b'id="view-detail" class="view-panel" hidden', content)
+        self.assertIn(
+            b'id="view-stream" class="view-panel stream-view" hidden', content
+        )
+
+    async def test_stream_and_contracts_have_separate_addresses(self):
+        for path in ("/stream", "/contracts"):
+            status, _, content = await raw_request(app, path)
+            self.assertEqual(status, 200)
+            self.assertIn(b"/static/app.js", content)
+
+    async def test_no_workbench_mutation_routes_are_exposed(self):
+        status, _, _ = await raw_request(
+            app, "/workbench/producer/configuration", method="PATCH"
+        )
+        self.assertEqual(status, 404)
+        status, _, _ = await raw_request(
+            app, f"/workbench/incidents/{uuid4()}/investigations/retry", method="POST"
+        )
+        self.assertEqual(status, 404)

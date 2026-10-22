@@ -5,17 +5,13 @@ export class ApiError extends Error {
   }
 }
 
-export async function api(path, { method = "GET", token, body, signal } = {}) {
-  const headers = { Accept: "application/json" };
-  if (token) headers.Authorization = `Bearer ${token}`;
-  if (body !== undefined) headers["Content-Type"] = "application/json";
+export async function api(path, { signal } = {}) {
   const response = await fetch(path, {
-    method,
-    headers,
+    method: "GET",
+    headers: { Accept: "application/json" },
     signal,
     cache: "no-store",
-    credentials: "same-origin",
-    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+    credentials: "omit",
   });
   let data;
   try {

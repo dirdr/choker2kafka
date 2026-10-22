@@ -12,7 +12,10 @@ import { drawChart } from "./charts.js";
 
 const byId = (id) => document.getElementById(id);
 const state = {
-  view: "incidents",
+  view: document.body.dataset.incidentId
+    ? "detail"
+    : { "/stream": "stream", "/contracts": "contracts" }[location.pathname] ||
+      "incidents",
   incidents: [],
   configuration: null,
   contracts: [],
@@ -24,11 +27,7 @@ const state = {
   samples: [],
   paused: false,
   errors: [],
-  busy: false,
-  operatorToken: "",
   detailController: null,
-  pendingAction: null,
-  producerRevision: null,
 };
 let pollTimer;
 let notificationTimer;
@@ -84,16 +83,22 @@ function renderIncidentList() {
   setText("nav-incident-count", open);
   setText("incident-list-meta", `${rows.length} shown · latest 20 records`);
   byId("incident-list").innerHTML = rows.length
-    ? rows
-        .map(
-          (row) =>
-            `<button class="incident-row ${row.incident_id === state.selected ? "selected" : ""}" data-incident="${esc(row.incident_id)}" ${row.incident_id === state.selected ? 'aria-current="true"' : ""}><div class="incident-row-heading">${badge(row.status)}<small class="mono">${esc(row.incident_id.slice(0, 8))}</small></div><h3>${esc(row.rule_id)}</h3><p>${esc(row.topic)} / ${esc(row.producer_id)}</p><small>${esc(formatTime(row.opened_at))}</small></button>`,
-        )
-        .join("")
+    ? `<div class="table-responsive"><table class="table incident-summary-table"><thead><tr><th>Incident</th><th>Summary</th><th>Investigation</th><th>Detected · UTC</th><th></th></tr></thead><tbody>${rows
+        .map((row) => {
+          const summary =
+            row.summary ||
+            (row.investigation_status === "failed"
+              ? "Investigation failed. Review its tool activity or retry."
+              : ["queued", "running"].includes(row.investigation_status)
+                ? "Investigation in progress. Live activity is available."
+                : "Contract violation captured. Waiting for investigation.");
+          return `<tr><td><a class="incident-link" href="/incidents/${esc(row.incident_id)}" data-incident="${esc(row.incident_id)}">${esc(row.rule_id)}</a><div class="row-meta">${esc(row.topic)} / ${esc(row.producer_id)}${row.configuration_revision ? ` · r${esc(row.configuration_revision)}` : ""} · ${esc(row.affected_fields.join(", "))}</div><div class="row-status">${badge(row.status)}<span class="mono">${esc(row.incident_id.slice(0, 8))}</span></div></td><td class="incident-summary"><p>${esc(summary)}</p><div class="row-meta">${esc(row.contract_id)} · v${esc(row.contract_version)}</div></td><td>${badge(row.investigation_status || "pending")}${row.model_id ? `<div class="row-meta mono">${esc(row.model_id)}</div>` : ""}</td><td class="mono incident-date">${esc(formatTime(row.opened_at))}</td><td><a class="text-button" href="/incidents/${esc(row.incident_id)}" data-incident="${esc(row.incident_id)}">Open</a></td></tr>`;
+        })
+        .join("")}</tbody></table></div>`
     : empty(
         "No incidents",
         filter === "all"
-          ? "Healthy traffic creates no incidents. Captured violations will appear here."
+          ? "Captured contract violations will appear here."
           : `No ${filter} incidents in the latest records.`,
       );
 }
@@ -168,10 +173,7 @@ function runMarkup(run) {
     );
   let result;
   if (run.status === "failed") {
-    const retryEnabled =
-      state.incident?.status === "open" &&
-      state.runs[0]?.investigation_id === run.investigation_id;
-    result = `<div class="error-panel"><h4>${esc(label(run.error_code || "Investigation failed"))}</h4><p>${esc(run.error_detail?.message || "The model did not return a usable finding. An operator can retry this attempt.")}</p>${run.error_detail?.fields ? `<ul>${run.error_detail.fields.map((field) => `<li><code>${esc(field.path)}</code>: ${esc(label(field.type))}</li>`).join("")}</ul>` : ""}${retryEnabled ? `<button class="btn btn-sm btn-outline-secondary" data-action="retry" ${state.busy ? "disabled" : ""}>Retry investigation</button><p class="mt-2">Creates a new model request. Previous attempts stay recorded.</p>` : ""}</div>`;
+    result = `<div class="error-panel"><h4>${esc(label(run.error_code || "Investigation failed"))}</h4><p>${esc(run.error_detail?.message || "The model did not return a usable finding.")}</p>${run.error_detail?.fields ? `<ul>${run.error_detail.fields.map((field) => `<li><code>${esc(field.path)}</code>: ${esc(label(field.type))}</li>`).join("")}</ul>` : ""}<p class="mt-2">An operator can retry this investigation through the API.</p></div>`;
   } else if (run.finding) result = findingMarkup(run.finding);
   else
     result = empty(
@@ -186,7 +188,7 @@ function renderDetail() {
   if (!incident || document.activeElement?.id === "attempt-select") return;
   const metrics = incident.signal?.observed || {};
   byId("incident-detail").innerHTML =
-    `<div class="detail-heading"><div><h2>${esc(incident.rule_id)}</h2><p class="mono">${esc(incident.incident_id)}</p></div>${badge(incident.status)}</div><div class="detail-metadata"><span>Topic <strong>${esc(incident.topic)}</strong></span><span>Producer <strong>${esc(incident.producer_id)}</strong></span><span>Contract <strong>${esc(incident.contract_id)} v${esc(incident.contract_version)}</strong></span><span>Fields <strong>${esc(incident.affected_fields.join(", "))}</strong></span>${typeof metrics.failure_ratio === "number" ? `<span>Captured failure <strong class="bad">${esc(percent(metrics.failure_ratio))}</strong></span>` : ""}</div><div class="detail-columns"><section><div class="section-heading"><h3>Activity timeline</h3><small>Recorded events · UTC</small></div><ol class="timeline">${timelineMarkup(incident, state.run)}</ol></section><section><div class="section-heading"><h3>Agent investigation</h3><button class="text-button" data-action="signal">View signal</button></div>${runMarkup(state.run)}</section></div>`;
+    `<div class="detail-heading"><div><h2>${esc(incident.rule_id)}</h2><p class="mono">${esc(incident.incident_id)}</p></div>${badge(incident.status)}</div><div class="detail-metadata"><span>Topic <strong>${esc(incident.topic)}</strong></span><span>Producer <strong>${esc(incident.producer_id)}</strong></span>${incident.configuration_revision ? `<span>Revision <strong class="mono">${esc(incident.configuration_revision)}</strong></span>` : ""}<span>Contract <strong>${esc(incident.contract_id)} v${esc(incident.contract_version)}</strong></span><span>Fields <strong>${esc(incident.affected_fields.join(", "))}</strong></span>${typeof metrics.failure_ratio === "number" ? `<span>Captured failure <strong class="bad">${esc(percent(metrics.failure_ratio))}</strong></span>` : ""}</div><div class="detail-columns"><section><div class="section-heading"><h3>Activity timeline</h3><small>Recorded events · UTC</small></div><ol class="timeline">${timelineMarkup(incident, state.run)}</ol></section><section><div class="section-heading"><h3>Agent investigation</h3><button class="text-button" data-action="signal">View signal</button></div>${runMarkup(state.run)}</section></div>`;
   byId("attempt-select")?.addEventListener("change", (event) => {
     state.chosenRun = event.target.value;
     refreshDetail();
@@ -237,6 +239,7 @@ function selectIncident(id, updateHistory = true) {
   if (updateHistory)
     history.pushState({}, "", `/incidents/${encodeURIComponent(id)}`);
   renderIncidentList();
+  showView("detail");
   byId("incident-detail").innerHTML = empty(
     "Loading incident",
     "Reading the recorded signal and investigation attempts.",
@@ -365,15 +368,6 @@ async function refreshOverview() {
   if (incidents) {
     state.incidents = incidents;
     renderIncidentList();
-    if (!state.selected && incidents.length) {
-      state.selected = incidents[0].incident_id;
-      renderIncidentList();
-    }
-    if (!state.selected && !incidents.length)
-      byId("incident-detail").innerHTML = empty(
-        "No incident to investigate",
-        "The detector is watching the stream. A contract violation will capture evidence and start an investigation.",
-      );
   }
   state.samples.push({ at: Date.now(), throughput, failure });
   if (state.samples.length > 60) state.samples.shift();
@@ -399,7 +393,7 @@ async function tick() {
   try {
     await refreshOverview();
     await Promise.allSettled([
-      state.selected && refreshDetail(),
+      state.view === "detail" && state.selected && refreshDetail(),
       state.view === "stream" && refreshEvents(),
     ]);
   } catch (error) {
@@ -414,20 +408,56 @@ async function tick() {
 function showView(view) {
   state.view = view;
   for (const element of document.querySelectorAll("[data-view]")) {
-    const active = element.dataset.view === view;
+    const active =
+      element.dataset.view === view ||
+      (view === "detail" && element.dataset.view === "incidents");
     element.classList.toggle("active", active);
     if (active) element.setAttribute("aria-current", "page");
     else element.removeAttribute("aria-current");
   }
-  for (const name of ["incidents", "stream", "contracts"])
+  for (const name of ["incidents", "detail", "stream", "contracts"])
     byId(`view-${name}`).hidden = name !== view;
   setText(
     "view-title",
-    { incidents: "Incidents", stream: "Live stream", contracts: "Contracts" }[
-      view
-    ],
+    {
+      incidents: "Incidents",
+      detail: "Incident",
+      stream: "Live stream",
+      contracts: "Contracts",
+    }[view],
   );
-  if (view === "stream") refreshEvents();
+  const titles = {
+    incidents: "Incidents",
+    detail: "Incident details",
+    stream: "Live stream",
+    contracts: "Contracts",
+  };
+  setText("page-title", titles[view]);
+  document.title = `Sentinel · ${titles[view]}`;
+  setText(
+    "page-description",
+    {
+      incidents: "Contract violations and investigation results.",
+      detail: "Captured evidence and recorded agent activity.",
+      stream: "Transport, throughput and timestamp health.",
+      contracts: "Versioned expectations for the stream.",
+    }[view],
+  );
+  if (view === "incidents") {
+    state.detailController?.abort();
+    state.selected = null;
+    state.incident = null;
+    state.run = null;
+  }
+  const path =
+    view === "detail"
+      ? `/incidents/${state.selected}`
+      : { incidents: "/", stream: "/stream", contracts: "/contracts" }[view];
+  if (path && location.pathname !== path) history.pushState({}, "", path);
+  if (view === "stream") {
+    refreshEvents();
+    chartRender();
+  }
   if (view === "contracts") loadContracts();
 }
 
@@ -508,98 +538,20 @@ async function inspectEvidence(action, target) {
   }
 }
 
-function authorize(description, action) {
-  if (state.operatorToken) return action();
-  state.pendingAction = action;
-  setText("token-action", description);
-  byId("token-dialog").showModal();
-}
-
-async function retryInvestigation(incidentId) {
-  if (state.busy || !incidentId) return;
-  state.busy = true;
-  renderDetail();
-  try {
-    const run = await api(`/api/incidents/${incidentId}/investigations/retry`, {
-      method: "POST",
-      token: state.operatorToken,
-    });
-    if (state.selected === incidentId) state.chosenRun = run.investigation_id;
-    notify("A new investigation is queued.");
-    await refreshDetail();
-  } catch (error) {
-    if (error.status === 401) state.operatorToken = "";
-    notify(error.message, true);
-  } finally {
-    state.busy = false;
-    renderDetail();
-  }
-}
-
-async function openProducer() {
-  try {
-    const configuration = await api("/api/producer/configuration");
-    state.configuration = configuration;
-    state.producerRevision = configuration.revision;
-    setText(
-      "producer-current",
-      `${configuration.producer_id} · revision ${configuration.revision} · ${configuration.event_time_unit}`,
-    );
-    byId("producer-unit").value = configuration.event_time_unit;
-    byId("producer-reason").value = "";
-    byId("operator-dialog").showModal();
-  } catch (error) {
-    notify(error.message, true);
-  }
-}
-
-async function applyProducer(change) {
-  if (state.busy) return;
-  state.busy = true;
-  byId("apply-producer").disabled = true;
-  try {
-    state.configuration = await api("/api/producer/configuration", {
-      method: "PATCH",
-      token: state.operatorToken,
-      body: change,
-    });
-    renderConfiguration();
-    byId("operator-dialog").close();
-    notify(
-      `Producer now emits ${state.configuration.event_time_unit} at revision ${state.configuration.revision}.`,
-    );
-    await refreshOverview();
-  } catch (error) {
-    if (error.status === 401) state.operatorToken = "";
-    notify(
-      error.status === 409
-        ? "The configuration changed. Close this panel and reopen it before retrying."
-        : error.message,
-      true,
-    );
-  } finally {
-    state.busy = false;
-    byId("apply-producer").disabled = false;
-  }
-}
-
 document.addEventListener("click", (event) => {
   const nav = event.target.closest("[data-view]");
   if (nav) showView(nav.dataset.view);
   const row = event.target.closest("[data-incident]");
-  if (row) selectIncident(row.dataset.incident);
+  if (row) {
+    event.preventDefault();
+    selectIncident(row.dataset.incident);
+  }
   const closer = event.target.closest("[data-close]");
   if (closer) byId(closer.dataset.close).close();
   const action = event.target.closest("[data-action]");
-  if (action?.dataset.action === "retry") {
-    const incidentId = state.incident?.incident_id;
-    authorize("Retry this investigation using a new paid model request.", () =>
-      retryInvestigation(incidentId),
-    );
-  } else if (action) inspectEvidence(action.dataset.action, action);
+  if (action) inspectEvidence(action.dataset.action, action);
 });
 byId("incident-filter").addEventListener("change", renderIncidentList);
-byId("operator-button").addEventListener("click", openProducer);
 byId("history-button").addEventListener("click", async () => {
   try {
     showEvidence(
@@ -610,32 +562,6 @@ byId("history-button").addEventListener("click", async () => {
   } catch (error) {
     notify(error.message, true);
   }
-});
-byId("token-form").addEventListener("submit", (event) => {
-  event.preventDefault();
-  state.operatorToken = byId("operator-token").value.trim();
-  byId("operator-token").value = "";
-  const action = state.pendingAction;
-  state.pendingAction = null;
-  byId("token-dialog").close();
-  if (state.operatorToken) action?.();
-});
-byId("token-dialog").addEventListener("close", () => {
-  byId("operator-token").value = "";
-  state.pendingAction = null;
-});
-byId("producer-form").addEventListener("submit", (event) => {
-  event.preventDefault();
-  const change = {
-    expected_revision: state.producerRevision,
-    event_time_unit: byId("producer-unit").value,
-    reason: byId("producer-reason").value.trim(),
-  };
-  if (!change.reason) return;
-  authorize(
-    `Apply ${change.event_time_unit} to producer revision ${change.expected_revision}.`,
-    () => applyProducer(change),
-  );
 });
 byId("pause-button").addEventListener("click", () => {
   state.paused = !state.paused;
@@ -654,14 +580,20 @@ window.addEventListener("popstate", () => {
   state.selected = null;
   state.incident = null;
   if (match) selectIncident(match[1], false);
-  else if (state.incidents.length)
-    selectIncident(state.incidents[0].incident_id, false);
+  else
+    showView(
+      { "/stream": "stream", "/contracts": "contracts" }[location.pathname] ||
+        "incidents",
+    );
 });
 window.addEventListener("resize", chartRender);
 window.addEventListener("pagehide", () => {
   clearTimeout(pollTimer);
-  state.operatorToken = "";
   state.detailController?.abort();
 });
+byId("back-to-incidents").addEventListener("click", () =>
+  showView("incidents"),
+);
+showView(state.view);
 loadContracts();
 tick();
