@@ -11,8 +11,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     UV_PROJECT_ENVIRONMENT=/opt/venv \
     PATH="/opt/venv/bin:$PATH"
 
-COPY pyproject.toml ./
-RUN uv sync --no-dev --no-install-project
+COPY pyproject.toml uv.lock ./
+RUN uv sync --locked --no-dev --no-install-project
 
 COPY sentinel ./sentinel
 
