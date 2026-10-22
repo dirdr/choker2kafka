@@ -1,0 +1,27 @@
+meta {
+  name: Readiness
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{base_url}}/ready
+  body: none
+  auth: none
+}
+
+tests {
+  test("HTTP 200", function () {
+    expect(res.getStatus()).to.equal(200);
+  });
+  test("All dependencies are ready", function () {
+    expect(res.getBody().status).to.equal("ready");
+    for (const name of ["postgres", "kafka", "anthropic"]) {
+      expect(res.getBody().checks[name].status).to.equal("ok");
+    }
+  });
+}
+
+docs {
+  HTTP 503 is a failed readiness check. Read the dependency details in the response.
+}

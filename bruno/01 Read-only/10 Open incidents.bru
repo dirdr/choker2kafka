@@ -1,0 +1,23 @@
+meta {
+  name: Open incidents
+  type: http
+  seq: 10
+}
+
+get {
+  url: {{base_url}}/api/incidents?status=open&limit={{limit}}
+  body: none
+  auth: none
+}
+
+tests {
+  test("HTTP 200", function () {
+    expect(res.getStatus()).to.equal(200);
+  });
+  test("Only open incidents are returned", function () {
+    expect(res.getBody()).to.be.an("array");
+    for (const incident of res.getBody()) {
+      expect(incident.status).to.equal("open");
+    }
+  });
+}

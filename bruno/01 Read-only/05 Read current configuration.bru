@@ -1,0 +1,32 @@
+meta {
+  name: Read current configuration
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{base_url}}/api/producer/configuration
+  body: none
+  auth: none
+}
+
+script:post-response {
+  if (res.getStatus() === 200) {
+    bru.setVar("producer_revision", res.getBody().revision);
+    bru.setVar("producer_revision_base_url", bru.getEnvVar("base_url"));
+  }
+}
+
+tests {
+  test("HTTP 200", function () {
+    expect(res.getStatus()).to.equal(200);
+  });
+  test("Revision is available", function () {
+    expect(res.getBody().revision).to.be.a("number");
+    expect(res.getBody().revision).to.be.at.least(1);
+  });
+}
+
+docs {
+  Saves the current producer revision as a runtime variable for later configuration changes. It is not persisted to the environment file.
+}

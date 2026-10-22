@@ -52,6 +52,7 @@ The operator confirmed the basic round trip and authorized the detection slice. 
 - [x] Expose contract, detection, incident and frozen-evidence read APIs.
 - [x] Test pure rules, API validation and lifecycle; validate repository SQL in isolated embedded PostgreSQL.
 - [x] Document architecture, database records, contract definitions and live verification.
+- [x] Add a Bruno collection with Local/Aiven environments, read checks, frozen-evidence reads and revision-aware producer controls.
 - [ ] Redeploy; verify a healthy baseline and an automatically captured seconds/microseconds violation.
 - [ ] Verify repeated bad windows and a restart retain one active incident and its original evidence.
 - [ ] Verify a live unit restoration changes new checks without rewriting the incident snapshot.

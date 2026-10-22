@@ -1,0 +1,20 @@
+meta {
+  name: Configuration history
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{base_url}}/api/producer/configuration/history
+  body: none
+  auth: none
+}
+
+tests {
+  test("HTTP 200", function () {
+    expect(res.getStatus()).to.equal(200);
+  });
+  test("Configuration history is an array", function () {
+    expect(res.getBody()).to.be.an("array");
+  });
+}

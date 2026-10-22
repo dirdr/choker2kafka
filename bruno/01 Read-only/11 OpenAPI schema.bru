@@ -1,0 +1,21 @@
+meta {
+  name: OpenAPI schema
+  type: http
+  seq: 11
+}
+
+get {
+  url: {{base_url}}/openapi.json
+  body: none
+  auth: none
+}
+
+tests {
+  test("HTTP 200", function () {
+    expect(res.getStatus()).to.equal(200);
+  });
+  test("API specification is available", function () {
+    expect(res.getBody()).to.have.property("openapi");
+    expect(res.getBody()).to.have.property("paths");
+  });
+}

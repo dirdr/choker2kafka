@@ -1,0 +1,32 @@
+meta {
+  name: List incidents
+  type: http
+  seq: 9
+}
+
+get {
+  url: {{base_url}}/api/incidents?limit={{limit}}
+  body: none
+  auth: none
+}
+
+script:post-response {
+  if (res.getStatus() === 200) {
+    const incidents = res.getBody();
+    bru.setVar("incident_id", incidents.length ? incidents[0].incident_id : "");
+    bru.setVar("incident_base_url", bru.getEnvVar("base_url"));
+  }
+}
+
+tests {
+  test("HTTP 200", function () {
+    expect(res.getStatus()).to.equal(200);
+  });
+  test("Incident summaries are an array", function () {
+    expect(res.getBody()).to.be.an("array");
+  });
+}
+
+docs {
+  Saves the most recent incident ID for the incident-evidence requests. An empty list is valid before the first violation.
+}

@@ -1,0 +1,24 @@
+meta {
+  name: Contract versions
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{base_url}}/api/contracts?limit={{limit}}
+  body: none
+  auth: none
+}
+
+tests {
+  test("HTTP 200", function () {
+    expect(res.getStatus()).to.equal(200);
+  });
+  test("Declarative contract list", function () {
+    expect(res.getBody()).to.be.an("array");
+    for (const contract of res.getBody()) {
+      expect(contract).to.have.property("contract_id");
+      expect(contract.rules).to.be.an("array");
+    }
+  });
+}

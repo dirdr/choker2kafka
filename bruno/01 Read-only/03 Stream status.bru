@@ -1,0 +1,25 @@
+meta {
+  name: Stream status
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{base_url}}/api/stream
+  body: none
+  auth: none
+}
+
+tests {
+  test("HTTP 200", function () {
+    expect(res.getStatus()).to.equal(200);
+  });
+  test("Worker and transport states are present", function () {
+    expect(res.getBody()).to.have.property("worker");
+    expect(res.getBody()).to.have.property("transport");
+  });
+}
+
+docs {
+  Transport may be warming_up or stale. Inspect the response; HTTP success alone does not establish healthy data.
+}

@@ -1,0 +1,21 @@
+meta {
+  name: Recent events
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{base_url}}/api/events?limit={{limit}}
+  body: none
+  auth: none
+}
+
+tests {
+  test("HTTP 200", function () {
+    expect(res.getStatus()).to.equal(200);
+  });
+  test("Bounded event list", function () {
+    expect(res.getBody()).to.be.an("array");
+    expect(res.getBody().length).to.be.at.most(Number(bru.getEnvVar("limit")));
+  });
+}

@@ -1,0 +1,25 @@
+meta {
+  name: Detection status
+  type: http
+  seq: 8
+}
+
+get {
+  url: {{base_url}}/api/detection
+  body: none
+  auth: none
+}
+
+tests {
+  test("HTTP 200", function () {
+    expect(res.getStatus()).to.equal(200);
+  });
+  test("Check results are available", function () {
+    expect(res.getBody()).to.have.property("worker");
+    expect(res.getBody().checks).to.be.an("array");
+  });
+}
+
+docs {
+  Check result states may include healthy, violated, warming_up or stale. This request reads recorded evaluations; it does not trigger detection.
+}

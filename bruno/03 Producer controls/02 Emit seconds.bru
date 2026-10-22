@@ -1,0 +1,55 @@
+meta {
+  name: Emit seconds
+  type: http
+  seq: 2
+}
+
+patch {
+  url: {{base_url}}/api/producer/configuration
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{operator_token}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "expected_revision": {{producer_revision}},
+    "event_time_unit": "seconds",
+    "reason": "Bruno verification: seconds"
+  }
+}
+
+script:pre-request {
+  const revision = Number(bru.getVar("producer_revision"));
+  if (!Number.isSafeInteger(revision) || revision < 1 || bru.getVar("producer_revision_base_url") !== bru.getEnvVar("base_url")) {
+    throw new Error("Run Read current configuration in the selected environment first.");
+  }
+}
+
+script:post-response {
+  if (res.getStatus() === 200) {
+    bru.setVar("producer_revision", res.getBody().revision);
+    bru.setVar("producer_revision_base_url", bru.getEnvVar("base_url"));
+  }
+}
+
+tests {
+  test("HTTP 200", function () {
+    expect(res.getStatus()).to.equal(200);
+  });
+  test("Configuration change applied", function () {
+    expect(res.getBody().event_time_unit).to.equal("seconds");
+    expect(res.getBody().revision).to.be.at.least(2);
+  });
+}
+
+docs {
+  Changes the running producer configuration. Set operator_token as a Bruno environment secret matching OPERATOR_TOKEN in the app. A stale revision returns HTTP 409; reread the configuration before retrying.
+}

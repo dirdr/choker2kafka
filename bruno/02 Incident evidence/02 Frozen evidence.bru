@@ -1,0 +1,41 @@
+meta {
+  name: Frozen evidence
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{base_url}}/api/incidents/{{incident_id}}/evidence
+  body: none
+  auth: none
+}
+
+script:pre-request {
+  const explicitId = bru.getEnvVar("incident_id");
+  if (explicitId) {
+    bru.setVar("incident_id", explicitId);
+    bru.setVar("incident_base_url", bru.getEnvVar("base_url"));
+  }
+  const incidentId = bru.getVar("incident_id");
+  if (!incidentId) {
+    throw new Error("Run List incidents after a violation, or set incident_id in the selected environment.");
+  }
+  if (bru.getVar("incident_id") && bru.getVar("incident_base_url") !== bru.getEnvVar("base_url")) {
+    throw new Error("Run List incidents in the selected environment first.");
+  }
+}
+
+tests {
+  test("HTTP 200", function () {
+    expect(res.getStatus()).to.equal(200);
+  });
+  test("Captured snapshot is available", function () {
+    expect(res.getBody()).to.have.property("snapshot_id");
+    expect(res.getBody().body).to.have.property("snapshot");
+    expect(res.getBody().body).to.have.property("evaluation");
+  });
+}
+
+docs {
+  Returns the immutable capture. It does not substitute current configuration or create a new investigation.
+}

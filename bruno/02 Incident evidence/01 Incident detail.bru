@@ -1,0 +1,36 @@
+meta {
+  name: Incident detail
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{base_url}}/api/incidents/{{incident_id}}
+  body: none
+  auth: none
+}
+
+script:pre-request {
+  const explicitId = bru.getEnvVar("incident_id");
+  if (explicitId) {
+    bru.setVar("incident_id", explicitId);
+    bru.setVar("incident_base_url", bru.getEnvVar("base_url"));
+  }
+  const incidentId = bru.getVar("incident_id");
+  if (!incidentId) {
+    throw new Error("Run List incidents after a violation, or set incident_id in the selected environment.");
+  }
+  if (bru.getVar("incident_id") && bru.getVar("incident_base_url") !== bru.getEnvVar("base_url")) {
+    throw new Error("Run List incidents in the selected environment first.");
+  }
+}
+
+tests {
+  test("HTTP 200", function () {
+    expect(res.getStatus()).to.equal(200);
+  });
+  test("Signal and timeline are recorded", function () {
+    expect(res.getBody()).to.have.property("signal");
+    expect(res.getBody().timeline).to.be.an("array");
+  });
+}
