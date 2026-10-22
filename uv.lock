@@ -41,6 +41,7 @@ dependencies = [
     { name = "confluent-kafka" },
     { name = "fastapi" },
     { name = "psycopg", extra = ["binary"] },
+    { name = "pydantic" },
     { name = "python-dotenv" },
     { name = "uvicorn" },
 ]
@@ -50,6 +51,7 @@ requires-dist = [
     { name = "confluent-kafka", specifier = "==2.16.0" },
     { name = "fastapi", specifier = "==0.159.1" },
     { name = "psycopg", extras = ["binary"], specifier = "==3.3.6" },
+    { name = "pydantic", specifier = "==2.14.1" },
     { name = "python-dotenv", specifier = "==1.2.4" },
     { name = "uvicorn", specifier = "==0.54.0" },
 ]

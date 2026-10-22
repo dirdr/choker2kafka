@@ -12,7 +12,7 @@ from urllib.error import HTTPError, URLError
 import psycopg
 from confluent_kafka import KafkaError, KafkaException
 
-from sentinel import readiness
+from sentinel import connections, readiness
 from sentinel.main import app
 
 
@@ -106,7 +106,7 @@ class ReadinessTests(unittest.TestCase):
             with self.subTest(value=value):
                 os.environ["KAFKA_CA_CERT"] = value
                 with patch.object(
-                    readiness.Path,
+                    connections.Path,
                     "is_file",
                     side_effect=AssertionError("File access is not required"),
                 ):
@@ -132,7 +132,7 @@ class ReadinessTests(unittest.TestCase):
     def test_pem_normalization_preserves_certificate_chains(self):
         first = "-----BEGIN CERTIFICATE----- YWJjZA== -----END CERTIFICATE-----"
         second = "-----BEGIN CERTIFICATE----- ZWZnaA== -----END CERTIFICATE-----"
-        result = readiness.normalize_pem(f"{first}\n{second}")
+        result = connections.normalize_pem(f"{first}\n{second}")
         self.assertEqual(result.count("-----BEGIN CERTIFICATE-----"), 2)
         self.assertIn("\nYWJjZA==\n", result)
         self.assertIn("\nZWZnaA==\n", result)
