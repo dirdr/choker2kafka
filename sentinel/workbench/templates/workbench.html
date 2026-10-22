@@ -77,10 +77,11 @@
               Contract violations and investigation results.
             </p>
           </div>
-          <details class="model-label">
-            <summary>Investigator settings</summary><strong id="configured-model" class="mono">Loading model…</strong
-            ><small id="agent-version"></small>
-          </details>
+          <div class="model-label">
+            <button id="investigator-settings-button" class="text-button" type="button">Investigator settings</button>
+            <strong id="configured-model" class="mono">Loading model…</strong>
+            <small id="agent-version"></small>
+          </div>
         </div>
         <div
           id="source-errors"
@@ -185,6 +186,22 @@
       </main>
     </div>
     <div id="notification" class="notification" role="status" hidden></div>
+    <dialog id="investigator-settings-dialog" class="settings-dialog" aria-labelledby="settings-title">
+      <form id="investigator-settings-form">
+        <div class="dialog-heading"><div><h2 id="settings-title">Investigator settings</h2><p>Applies to new investigations and retries.</p></div></div>
+        <p id="settings-status" class="form-hint" role="status">Loading settings…</p>
+        <fieldset id="settings-fields" disabled>
+          <label class="form-label" for="settings-model">Model</label>
+          <select id="settings-model" name="model_id" class="form-select" required aria-describedby="settings-model-hint"></select>
+          <p id="settings-model-hint" class="form-hint">Models available to this application.</p>
+          <label class="form-label" for="settings-tokens">Token allowance</label>
+          <input id="settings-tokens" name="token_limit" class="form-control" type="number" min="4000" max="100000" step="1" required aria-describedby="settings-token-hint" />
+          <p id="settings-token-hint" class="form-hint">4,000–100,000 tokens per attempt.</p>
+        </fieldset>
+        <p id="settings-error" class="settings-error" role="alert" hidden></p>
+        <div class="dialog-actions"><button class="btn btn-outline-secondary" type="button" data-close="investigator-settings-dialog">Cancel</button><button id="settings-save" class="btn settings-submit" type="submit" disabled>Save settings</button></div>
+      </form>
+    </dialog>
     <dialog id="evidence-dialog" class="evidence-dialog">
       <div class="dialog-heading">
         <div>

@@ -1,4 +1,5 @@
 import { api } from "./api.js";
+import { wireInvestigatorSettings } from "./settings.js";
 import {
   escapeHTML as esc,
   formatTime,
@@ -247,7 +248,7 @@ async function refreshOverview() {
     );
     setText(
       "agent-version",
-      `${(investigator.token_limit || 0).toLocaleString()} tokens · ${investigator.deadline_seconds}s · ${label(investigator.worker)}`,
+      `${(investigator.token_limit || 0).toLocaleString()} tokens per attempt`,
     );
   }
   if (incidents) {
@@ -465,3 +466,8 @@ byId("back-to-incidents").addEventListener("click", () =>
 showView(state.view);
 loadContracts();
 tick();
+
+wireInvestigatorSettings(async () => {
+  notify("Investigator settings saved");
+  await refreshOverview();
+});

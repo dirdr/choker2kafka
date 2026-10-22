@@ -6,22 +6,22 @@
   src: url("/static/vendor/inter-latin-wght-normal.woff2") format("woff2");
 }
 :root {
-  --surface: #0b0d10;
-  --panel: #111419;
-  --panel-hover: #1b2028;
-  --line: #292e37;
-  --muted: #9ba3af;
-  --ink: #e5e8ed;
-  --accent: #ed9b54;
+  --surface: #111111;
+  --panel: #171717;
+  --panel-hover: #202020;
+  --line: #303030;
+  --muted: #a4a4a4;
+  --ink: #ededed;
+  --accent: #dedede;
   --good: #82c69b;
   --bad: #f08589;
   --warning: #e2ba74;
-  --tblr-primary: #ed9b54;
-  --tblr-primary-rgb: 237, 155, 84;
-  --tblr-body-bg: #0b0d10;
-  --tblr-body-color: #e5e8ed;
-  --tblr-card-bg: #111419;
-  --tblr-border-color: #292e37;
+  --tblr-primary: #dedede;
+  --tblr-primary-rgb: 222, 222, 222;
+  --tblr-body-bg: #111111;
+  --tblr-body-color: #ededed;
+  --tblr-card-bg: #171717;
+  --tblr-border-color: #303030;
   --tblr-font-sans-serif:
     "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
@@ -93,8 +93,7 @@ pre {
   position: fixed;
   inset: 0 auto 0 0;
   width: 190px;
-  background: #080a0d;
-  border-right: 1px solid var(--line);
+  background: #111111;
   display: flex;
   flex-direction: column;
   padding: 22px 12px;
@@ -112,7 +111,7 @@ pre {
   padding: 0 9px 30px;
 }
 .brand img {
-  filter: invert(0.75) sepia(0.5) saturate(2);
+  filter: invert(0.8);
 }
 .brand-dot {
   color: var(--accent);
@@ -144,9 +143,8 @@ pre {
   filter: invert(0.7);
 }
 .nav-item.active {
-  background: #ed9b5414;
-  color: var(--accent);
-  box-shadow: inset 2px 0 var(--accent);
+  background: var(--panel-hover);
+  color: var(--ink);
 }
 .nav-item:hover {
   background: var(--panel-hover);
@@ -157,7 +155,7 @@ pre {
   font:
     12px ui-monospace,
     monospace;
-  background: #ed9b541c;
+  background: #ffffff0d;
   padding: 1px 6px;
   border-radius: 3px;
 }
@@ -172,7 +170,7 @@ pre {
 }
 .environment-label {
   font-size: 12px;
-  letter-spacing: 1px;
+  letter-spacing: 0.4px;
   color: var(--muted);
 }
 .sidebar-bottom a {
@@ -197,7 +195,7 @@ pre {
   justify-content: space-between;
   align-items: center;
   gap: 16px;
-  background: #0b0d10f5;
+  background: #111111f5;
 }
 .breadcrumb-label {
   color: var(--muted);
@@ -224,11 +222,11 @@ pre {
 }
 .btn-outline-secondary {
   color: var(--ink);
-  border-color: #424852;
+  border-color: #484848;
 }
 .btn-outline-secondary:hover {
   background: var(--panel-hover);
-  border-color: #626b77;
+  border-color: #686868;
   color: #fff;
 }
 .btn-sm {
@@ -237,7 +235,7 @@ pre {
 }
 main {
   padding: 24px;
-  max-width: 1920px;
+  max-width: 1440px;
   margin: 0 auto;
 }
 .page-heading {
@@ -259,18 +257,15 @@ h1 {
 .metrics {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  border: 1px solid var(--line);
-  border-radius: 5px;
-  overflow: hidden;
-  background: var(--panel);
-  margin-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+  background: transparent;
+  margin-bottom: 24px;
 }
 .metric {
-  padding: 16px 18px;
+  padding: 12px 18px 18px 0;
   display: flex;
   flex-direction: column;
   gap: 7px;
-  border-right: 1px solid var(--line);
 }
 .metric:last-child {
   border: 0;
@@ -281,7 +276,7 @@ h1 {
 }
 .metric strong {
   font-weight: 500;
-  font-size: 28px;
+  font-size: 26px;
   line-height: 1.2;
   letter-spacing: -0.7px;
 }
@@ -302,9 +297,8 @@ h1 {
   color: var(--muted);
 }
 .view-panel {
-  border: 1px solid var(--line);
-  background: var(--panel);
-  border-radius: 5px;
+  border-top: 1px solid var(--line);
+  background: transparent;
   overflow: hidden;
 }
 .workspace-toolbar {
@@ -344,8 +338,8 @@ h1 {
 }
 .form-control,
 .form-select {
-  background-color: #14161b;
-  border-color: #444b57;
+  background-color: #171717;
+  border-color: #484848;
   color: var(--ink);
 }
 .form-control::placeholder {
@@ -354,7 +348,7 @@ h1 {
 .form-control:focus,
 .form-select:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 2px #ed9b5422;
+  box-shadow: 0 0 0 2px #dedede22;
 }
 .badge-state {
   display: inline-flex;
@@ -498,13 +492,14 @@ h1 {
 .table {
   --tblr-table-bg: transparent;
   --tblr-table-border-color: var(--line);
-  font-size: 13px;
+  font-size: 14px;
   margin: 0;
 }
 .table thead th {
   font-size: 12px;
-  letter-spacing: 0.3px;
-  background: #0d1015;
+  letter-spacing: 0;
+  text-transform: none;
+  background: transparent;
   color: var(--muted);
   font-weight: 500;
   padding: 12px 16px;
@@ -531,9 +526,9 @@ h1 {
   right: 24px;
   max-width: 440px;
   padding: 14px 18px;
-  background: #282d35;
+  background: #242424;
   color: var(--ink);
-  border: 1px solid #626b77;
+  border: 1px solid #686868;
   border-radius: 4px;
   z-index: 30;
   box-shadow: 0 8px 32px #0005;
@@ -541,8 +536,8 @@ h1 {
 dialog {
   color: var(--ink);
   background: var(--panel);
-  border: 1px solid #4c5461;
-  border-radius: 6px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
   padding: 24px;
   width: min(480px, calc(100% - 32px));
   max-height: 85dvh;
@@ -584,7 +579,7 @@ dialog::backdrop {
 .evidence-dialog pre {
   margin: 0;
   padding: 18px;
-  background: #090b0e;
+  background: #111111;
   border: 1px solid var(--line);
   color: #cbd2dd;
   font-size: 13px;

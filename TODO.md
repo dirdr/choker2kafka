@@ -95,7 +95,7 @@ Eligible-memory retrieval and capture remain part of the later investigation/mem
 - [x] Show incident lists, recorded evidence, attempts, findings, stream records and contract versions.
 - [ ] Add configuration diffs, policy decisions and recovery history after their backend is implemented.
 - [x] Display the configured model and each run's actual model.
-- [ ] Add an authenticated model selector if time permits; Runtime model configuration already works.
+- [x] Add a dashboard model and token selector with persistent settings, revision checks and same-origin browser writes.
 - [x] Display original investigation tool activity, status, duration and findings through compact polling.
 - [x] Keep manual producer changes and paid retries in Bruno/API; the workbench is read-only and uses no operator token.
 - [x] Verify frontend behavior through API and DOM checks; add a pinned Playwright fixture/live harness.
@@ -203,3 +203,5 @@ The retry endpoint already accepts failed attempts on open incidents. The dashbo
 - [x] Reduce incident details to findings, compact context and grouped tool-call rows; expand supporting evidence and diagnostics on demand.
 - [x] Use contract-neutral stream labels and metadata, simplify contract rows, and remove the permanent live badge.
 - [x] Bound browser requests to twelve seconds so stalled requests cannot suspend polling indefinitely.
+
+The active demo implementation order is tracked in [the demo delivery plan](docs/demo-delivery.md).

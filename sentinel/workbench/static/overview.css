@@ -48,25 +48,23 @@
 .stream-view > .workspace-toolbar,
 .stream-view > .table-responsive,
 .stream-view > .configuration-strip {
-  background: var(--panel);
-  border: 1px solid var(--line);
+  background: transparent;
+  border-bottom: 1px solid var(--line);
 }
 .stream-view > .workspace-toolbar {
-  border-radius: 5px 5px 0 0;
+  border-radius: 0;
 }
 .stream-view > .table-responsive {
-  border-radius: 0 0 5px 5px;
+  border-radius: 0;
   border-top: 0;
 }
 .model-label {
-  position: relative;
+  display: flex;
+  flex-direction: column;
   max-width: 340px;
   text-align: right;
   font-size: 13px;
   color: var(--muted);
-}
-.model-label summary {
-  cursor: pointer;
 }
 .model-label strong,
 .model-label small {
@@ -233,4 +231,79 @@ summary:focus-visible {
 .contract-definition + .contract-definition {
   border-top: 1px solid var(--line);
   padding-top: 12px;
+}
+
+.settings-dialog {
+  width: min(480px, calc(100% - 32px));
+  padding: 28px;
+}
+.settings-dialog .dialog-heading {
+  margin-bottom: 24px;
+}
+.settings-dialog h2 {
+  font-size: 20px;
+  font-weight: 550;
+  letter-spacing: -0.4px;
+}
+.settings-dialog fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+.settings-dialog .form-label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+.settings-dialog .form-control,
+.settings-dialog .form-select {
+  min-height: 42px;
+  font-size: 14px;
+}
+.settings-dialog .form-hint {
+  margin: 8px 0 24px;
+  line-height: 1.5;
+}
+.settings-dialog .dialog-actions {
+  gap: 10px;
+  border-top: 1px solid var(--line);
+  padding-top: 20px;
+  margin-top: 8px;
+}
+.settings-dialog .btn {
+  min-height: 38px;
+  padding: 8px 14px;
+  font-size: 14px;
+}
+.settings-submit {
+  background: var(--ink);
+  color: var(--surface);
+  border: 1px solid var(--ink);
+}
+.settings-submit:hover {
+  background: #d0d0d0;
+  border-color: #d0d0d0;
+  color: var(--surface);
+}
+.settings-error {
+  color: var(--bad);
+  margin: 0 0 20px;
+  line-height: 1.5;
+  font-size: 14px;
+}
+.settings-dialog button:active {
+  transform: translateY(1px);
+}
+.model-label .text-button {
+  align-self: flex-end;
+  color: var(--muted);
+}
+.model-label .text-button:hover {
+  color: var(--ink);
+}
+@media (max-width: 760px) {
+  .settings-dialog {
+    padding: 22px;
+  }
 }

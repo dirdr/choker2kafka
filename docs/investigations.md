@@ -19,7 +19,7 @@ For live verification, establish a healthy detector baseline, change the produce
 `GET /api/investigation` exposes the current configured model/provider, agent version and limits for dashboard display. `ANTHROPIC_MODEL` is an Anthropic Claude ID; changing the Runtime variable requires redeployment and affects newly queued attempts and explicit retries. Existing attempts retain their model IDs and token allowances. Queued work is stamped with the implementation version when claimed. A dashboard model selector remains pending.
 
 
-Retry budgets can be changed without redeploying. Send an optional JSON body to `POST /api/incidents/{id}/investigations/retry` with `token_limit` (4000–100000) and `deadline_seconds` (30–300). Omitted fields use Runtime defaults. Authentication and the failed-attempt/open-incident checks still apply. Each new attempt records its own limits; previous attempts keep theirs. Changing Runtime defaults requires a restart or redeployment. Existing queued attempts retain their saved budget.
+Retry budgets can be changed without redeploying. Send an optional JSON body to `POST /api/incidents/{id}/investigations/retry` with `token_limit` (4000–100000) and `deadline_seconds` (30–300). Omitted fields use Runtime defaults. Authentication and the failed-attempt/open-incident checks still apply. Each new attempt records its own limits; previous attempts keep theirs. Saved application settings override Runtime model/token defaults. Changes in the dashboard apply to new attempts without a restart. The deadline remains an environment default or a per-retry override. Existing queued attempts retain their saved budget.
 
 ```json
 {"token_limit": 80000, "deadline_seconds": 240}

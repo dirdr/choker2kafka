@@ -24,6 +24,20 @@ try {
       assert.ok(path in fixture.data, `Unexpected API request: ${path}`);
       return route.fulfill({ json: fixture.data[path] });
     });
+  if (!live) await page.route("**/workbench/investigator/settings", async (route) => {
+    const request = route.request();
+    const data = fixture.data["/workbench/investigator/settings"];
+    requests.push({path: "/workbench/investigator/settings", method: request.method()});
+    assert.equal(request.headers().authorization, undefined);
+    if (request.method() === "GET") return route.fulfill({json: data});
+    assert.equal(request.method(), "PATCH");
+    assert.equal(request.headers()["x-sentinel-csrf"], data.csrf_token);
+    const body = request.postDataJSON();
+    assert.equal(body.expected_revision, data.settings.revision);
+    data.settings = {revision: data.settings.revision + 1, model_id: body.model_id, token_limit: body.token_limit};
+    Object.assign(fixture.data["/api/investigation"], data.settings);
+    return route.fulfill({json: data.settings});
+  });
   await page.goto(base, { waitUntil: "domcontentloaded" });
   await page.locator(".brand").waitFor();
   await page.waitForFunction(
@@ -41,6 +55,14 @@ try {
       requests.some((request) => request.path.includes("/investigations")),
       false,
     );
+    await page.locator("#investigator-settings-button").click();
+    await page.locator("#settings-save:not([disabled])").waitFor();
+    await page.locator("#settings-model").selectOption("claude-sonnet-4-6");
+    await page.locator("#settings-tokens").fill("80000");
+    await page.locator("#settings-save").click();
+    await page.waitForFunction(() => !document.getElementById("investigator-settings-dialog").open);
+    await page.waitForFunction(() => document.getElementById("configured-model").textContent === "claude-sonnet-4-6");
+    assert.equal(fixture.run.model_id, "claude-haiku-4-5-20251001");
     await page.locator(".incident-link").first().click();
     await page.waitForFunction(() =>
       document
@@ -120,8 +142,8 @@ try {
   assert.deepEqual(errors, []);
   console.log(
     live
-      ? "Live read-only browser smoke passed"
-      : "Read-only browser checks passed, including incident navigation and output escaping",
+      ? "Live browser smoke passed without settings changes"
+      : "Browser checks passed, including saved settings, incident navigation and output escaping",
   );
 } finally {
   await browser.close();

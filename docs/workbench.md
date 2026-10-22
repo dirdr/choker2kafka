@@ -8,7 +8,7 @@ The workbench shows transport freshness, a ten-second average event rate, reject
 
 Polling runs every five seconds, pauses when the tab is hidden, and waits for each cycle to finish. You can pause it manually. Partial failures retain previous values with a visible warning. Raw tool bodies and frozen snapshots load only when requested. Every attempt shows its actual model; the header disclosure shows the model and budget configured for new attempts. Requests time out after twelve seconds so a stalled source cannot block all later polls.
 
-The workbench is read-only. Producer changes and investigation retries stay in Bruno/API. It never requests an operator token and makes only GET requests. External operator APIs still require their bearer token. Captured configuration history remains available through incident evidence.
+Incident, contract and stream views remain read-only. Investigator settings can be changed through the header dialog. Producer changes and retries remain outside these views. The browser never receives the operator token. External operator APIs still require their bearer token. Captured configuration history remains available through incident evidence.
 
 ## Deployed check
 
@@ -41,3 +41,5 @@ Local verification passed 102 unit/API tests and a DOM interaction check coverin
 
 
 The primary incident view shows cause and recommendation, followed by one activity row per tool call. Supporting evidence and execution diagnostics are collapsed and retain their expanded state during polling. Contract rows show only name, topic, version and rule count; expanding the count reveals recorded definitions. The stream table uses ingestion metadata and record inspection rather than a fixed timestamp field. Status warnings appear on failed reads; there is no permanent live badge.
+
+Open **Investigator settings**, choose a model and token allowance, and save. PostgreSQL retains the selection across deployments. New original investigations and retries use saved defaults. Existing queued, running and completed attempts retain their recorded model and budget. The catalog comes from Anthropic; a catalog outage preserves the current model and allows budget changes.

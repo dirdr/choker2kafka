@@ -102,6 +102,15 @@ export function fixtures() {
     event_time_unit: "seconds",
   };
   const data = {
+    "/workbench/investigator/settings": {
+      settings: {revision: 0, model_id: run.model_id, token_limit: 50000},
+      editable: true,
+      csrf_token: "fixture-csrf",
+      models: [
+        {id: run.model_id, name: "Claude Haiku"},
+        {id: "claude-sonnet-4-6", name: "Claude Sonnet"},
+      ],
+    },
     "/api/stream": {
       worker: "running",
       transport: "flowing",

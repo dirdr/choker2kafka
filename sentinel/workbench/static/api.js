@@ -5,13 +5,25 @@ export class ApiError extends Error {
   }
 }
 
-export async function api(path, { signal } = {}) {
+export function api(path, { signal } = {}) {
+  return request(path, { signal });
+}
+
+export function saveInvestigatorSettings(body, csrf) {
+  return request("/workbench/investigator/settings", { method: "PATCH", body, csrf });
+}
+
+async function request(path, { signal, method = "GET", body, csrf } = {}) {
   const timeout = AbortSignal.timeout(12000);
   const combined = signal ? AbortSignal.any([signal, timeout]) : timeout;
   try {
     const response = await fetch(path, {
-      method: "GET",
-      headers: { Accept: "application/json" },
+      method,
+      headers: {
+        Accept: "application/json",
+        ...(body ? { "Content-Type": "application/json", "X-Sentinel-CSRF": csrf } : {}),
+      },
+      ...(body ? { body: JSON.stringify(body) } : {}),
       signal: combined,
       cache: "no-store",
       credentials: "omit",
