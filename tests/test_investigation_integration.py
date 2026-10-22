@@ -127,5 +127,20 @@ class InvestigationIntegrationTests(unittest.TestCase):
                 (run_id,),
             )
 
+    def test_incident_list_contains_a_compact_latest_finding(self):
+        self.investigations.finish(
+            self.run["investigation_id"],
+            {"likely_cause": "Producer emits seconds", "conclusion": "supported"},
+            {"requests": 2},
+            123,
+        )
+        rows = self.repository.incidents(100)
+        row = next(r for r in rows if r["incident_id"] == self.incident["incident_id"])
+        self.assertEqual(row["summary"], "Producer emits seconds")
+        self.assertEqual(row["investigation_status"], "completed")
+        self.assertEqual(row["model_id"], MODEL_ID)
+        self.assertNotIn("activity", row)
+        self.assertNotIn("finding", row)
+
     def test_unknown_incident_does_not_enqueue_retry(self):
         self.assertIsNone(self.investigations.retry(uuid4(), MODEL_ID, 20000))

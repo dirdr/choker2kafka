@@ -166,7 +166,8 @@ class DetectionRepository:
         fields = sorted(signal.affected_fields)
         active = connection.execute(
             "SELECT incident_id FROM sentinel.incidents WHERE run_id = %s AND topic = %s "
-            "AND producer_id = %s AND contract_id = %s AND rule_id = %s AND affected_fields = %s AND status <> 'resolved'",
+            "AND producer_id = %s AND contract_id = %s AND rule_id = %s AND affected_fields = %s "
+            "AND configuration_revision IS NOT DISTINCT FROM %s AND status <> 'resolved'",
             (
                 snapshot.run_id,
                 snapshot.topic,
@@ -174,6 +175,7 @@ class DetectionRepository:
                 signal.contract_id,
                 signal.rule_id,
                 fields,
+                signal.configuration_revision,
             ),
         ).fetchone()
         if active:
@@ -190,8 +192,8 @@ class DetectionRepository:
         )
         connection.execute(
             "INSERT INTO sentinel.incidents "
-            "(incident_id, run_id, topic, producer_id, rule_id, affected_fields, contract_id, contract_version, opened_at, snapshot_id, signal) "
-            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+            "(incident_id, run_id, topic, producer_id, rule_id, affected_fields, contract_id, contract_version, opened_at, snapshot_id, signal, configuration_revision) "
+            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
             (
                 incident_id,
                 snapshot.run_id,
@@ -204,6 +206,7 @@ class DetectionRepository:
                 snapshot.evaluated_at,
                 snapshot_id,
                 Jsonb(signal.model_dump(mode="json")),
+                signal.configuration_revision,
             ),
         )
         connection.execute(
@@ -281,9 +284,25 @@ class DetectionRepository:
     def incidents(self, limit: int, status: str | None = None) -> list[dict]:
         with self.storage.connection() as connection:
             return connection.execute(
-                "SELECT incident_id, run_id, topic, producer_id, rule_id, affected_fields, contract_id, "
-                "contract_version, status, opened_at, snapshot_id FROM sentinel.incidents "
-                "WHERE (%s::text IS NULL OR status = %s) ORDER BY opened_at DESC, incident_id LIMIT %s",
+                """
+                SELECT i.incident_id, i.run_id, i.topic, i.producer_id, i.rule_id,
+                       i.affected_fields, i.contract_id, i.contract_version,
+                       i.status, i.opened_at, i.snapshot_id, i.configuration_revision,
+                       i.signal->'observed'->'failure_ratio' AS failure_ratio,
+                       r.status AS investigation_status,
+                       r.model_id, r.finding->>'likely_cause' AS summary,
+                       r.finding->>'conclusion' AS conclusion,
+                       r.error_code
+                FROM sentinel.incidents i
+                LEFT JOIN LATERAL (
+                    SELECT status, model_id, finding, error_code
+                    FROM sentinel.investigations
+                    WHERE incident_id = i.incident_id
+                    ORDER BY created_at DESC, investigation_id DESC LIMIT 1
+                ) r ON true
+                WHERE (%s::text IS NULL OR i.status = %s)
+                ORDER BY i.opened_at DESC, i.incident_id LIMIT %s
+                """,
                 (status, status, limit),
             ).fetchall()
 

@@ -82,6 +82,7 @@ class Signal(FrozenModel):
     producer_id: str
     run_id: UUID
     affected_fields: tuple[str, ...]
+    configuration_revision: int | None = Field(default=None, gt=0)
     contract_id: str
     contract_version: int
     window_start: AwareDatetime

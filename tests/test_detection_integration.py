@@ -1,6 +1,7 @@
 import os
 import unittest
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from unittest.mock import patch
 from uuid import uuid4
 
@@ -97,6 +98,77 @@ class DetectionIntegrationTests(unittest.TestCase):
         )
         self.assertEqual(
             len(self.repository.incident(incidents[0]["incident_id"])["timeline"]), 1
+        )
+
+    def test_distinct_faulty_revisions_open_distinct_incidents(self):
+        self.seed_regression()
+        self.repository.evaluate_and_capture(self.topic, evaluate, self.now)
+        original = self.incidents()[0]
+        frozen = self.repository.evidence(original["incident_id"])
+        current = self.storage.configuration()
+        new = self.storage.change_configuration(
+            ConfigurationChange(
+                expected_revision=current.revision,
+                event_time_unit="microseconds",
+                reason="New faulty revision",
+            )
+        )
+        records = []
+        for index in range(100):
+            ingested = self.now + timedelta(seconds=0.1 + index * 0.09)
+            event = make_order(
+                new, "integration", int(ingested.timestamp() * 1_000_000_000)
+            )
+            records.append(
+                StreamRecord(
+                    self.topic,
+                    0,
+                    1000 + index,
+                    int(ingested.timestamp() * 1000),
+                    "create_time",
+                    event.model_dump_json().encode(),
+                    ingested,
+                )
+            )
+        self.storage.store(records)
+        for second in (10, 11, 12):
+            self.repository.evaluate_and_capture(
+                self.topic, evaluate, self.now + timedelta(seconds=second)
+            )
+        rows = self.incidents()
+        self.assertEqual(len(rows), 2)
+        self.assertEqual(
+            {r["configuration_revision"] for r in rows},
+            {current.revision, new.revision},
+        )
+        self.assertTrue(all(r["status"] == "open" for r in rows))
+        self.assertEqual(self.repository.evidence(original["incident_id"]), frozen)
+        self.repository.initialize(self.topic)
+        self.repository.evaluate_and_capture(
+            self.topic, evaluate, self.now + timedelta(seconds=13)
+        )
+        self.assertEqual(len(self.incidents()), 2)
+
+    def test_legacy_incident_revision_is_backfilled_from_frozen_evidence(self):
+        self.seed_regression()
+        self.repository.evaluate_and_capture(self.topic, evaluate, self.now)
+        incident = self.incidents()[0]
+        migration = (
+            Path(__file__).resolve().parents[1]
+            / "sentinel/stream/migrations/005_incident_revisions.sql"
+        ).read_text()
+        backfill = migration[
+            migration.index("UPDATE sentinel.incidents") : migration.index("DROP INDEX")
+        ]
+        with self.storage.connection() as connection:
+            connection.execute(
+                "UPDATE sentinel.incidents SET configuration_revision = NULL WHERE incident_id = %s",
+                (incident["incident_id"],),
+            )
+            connection.execute(backfill)
+        self.assertEqual(
+            self.incidents()[0]["configuration_revision"],
+            incident["configuration_revision"],
         )
 
     def test_snapshots_and_trigger_contract_survive_live_changes(self):

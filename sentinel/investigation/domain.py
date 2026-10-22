@@ -34,6 +34,18 @@ class CapturedEvidence:
         snapshot = body["snapshot"]
         self.events = snapshot["events"]
         self.producer_id = snapshot["producer_id"]
+        self.triggering_revision = (body["evaluation"].get("signal") or {}).get(
+            "configuration_revision"
+        )
+        revision_events = (
+            [
+                event
+                for event in self.events
+                if event["config_revision"] == self.triggering_revision
+            ]
+            if self.triggering_revision is not None
+            else self.events
+        )
         self.documents = {
             "inspect_incident": [
                 self.document(f"snapshot:{snapshot_id}", body["evaluation"]),
@@ -43,7 +55,7 @@ class CapturedEvidence:
                 ],
                 *[
                     self.document(f"event:{e['event_id']}", e)
-                    for e in (*self.events[:5], *self.events[-5:])
+                    for e in (*self.events[:5], *revision_events[-5:])
                 ],
             ],
             "lookup_producer_context": [
@@ -76,7 +88,7 @@ class CapturedEvidence:
         return {
             "snapshot_id": self.snapshot_id,
             "documents": documents,
-            "sample_selection": "First five and last five captured events; not the complete window",
+            "sample_selection": "First five captured events and last five from the triggering revision when known; not the complete window",
             "missing_configuration_revisions": self.body.get(
                 "missing_configuration_revisions", []
             ),
@@ -113,7 +125,11 @@ class CapturedEvidence:
             if e["config_revision"] == attribution.configuration_revision
         }
         if (
-            config_id not in references
+            (
+                self.triggering_revision is not None
+                and attribution.configuration_revision != self.triggering_revision
+            )
+            or config_id not in references
             or not references.intersection(matching_events)
             or not any(r.startswith("contract:") for r in references)
             or self.body.get("context_history_truncated", False)

@@ -1,3 +1,4 @@
+from collections import Counter
 from collections.abc import Callable
 from datetime import timedelta
 from statistics import median
@@ -138,8 +139,23 @@ def timestamp_bounds(
     }
     if len(failures) * 5 <= len(recent) * 4:
         return CheckResult(**base, **counts, status="healthy", metrics=metrics)
+    revision_samples = Counter(event.config_revision for event, _ in recent)
+    revision_failures = Counter(event.config_revision for event, _ in failures)
+    eligible = {
+        revision
+        for revision, count in revision_samples.items()
+        if count >= 50 and revision_failures[revision] * 5 > count * 4
+    }
+    if not eligible:
+        return CheckResult(
+            **base,
+            **counts,
+            status="violated",
+            metrics={**metrics, "capture_status": "revision_warming_up"},
+        )
     triggering_event = max(
-        (event for event, _ in failures), key=lambda event: event.ingested_at
+        (event for event, _ in failures if event.config_revision in eligible),
+        key=lambda event: (event.ingested_at, str(event.event_id)),
     )
     triggering_contract = applicable_contract(
         snapshot.contracts, contract.contract_id, triggering_event.ingested_at
@@ -161,6 +177,7 @@ def timestamp_bounds(
         producer_id=snapshot.producer_id,
         run_id=snapshot.run_id,
         affected_fields=rule.fields,
+        configuration_revision=triggering_event.config_revision,
         contract_id=contract.contract_id,
         contract_version=triggering_contract.version,
         window_start=snapshot.recent_start,

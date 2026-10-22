@@ -36,6 +36,30 @@ class TimestampDetectorTests(unittest.TestCase):
         self.assertEqual(result.signal.affected_fields, ("event_time",))
         self.assertIn(f"event:{source.events[-1].event_id}", result.signal.evidence_ids)
 
+    def test_signal_identifies_the_faulty_revision(self):
+        result = self.result(snapshot("seconds"))
+        self.assertEqual(result.signal.configuration_revision, 2)
+
+    def test_new_faulty_revision_requires_its_own_sample_minimum(self):
+        for count, expected in ((10, 2), (49, 2), (50, 3)):
+            source = snapshot("seconds")
+            events = list(source.events)
+            for index in range(len(events) - count, len(events)):
+                events[index] = sample(
+                    events[index].ingested_at, "microseconds", revision=3
+                )
+            result = self.result(source.model_copy(update={"events": tuple(events)}))
+            self.assertEqual(result.signal.configuration_revision, expected)
+
+    def test_healthy_new_revision_is_not_blamed_for_old_violations(self):
+        source = snapshot("seconds")
+        events = list(source.events)
+        for index in range(190, 200):
+            events[index] = sample(events[index].ingested_at, revision=3)
+        result = self.result(source.model_copy(update={"events": tuple(events)}))
+        self.assertEqual(result.status, "violated")
+        self.assertEqual(result.signal.configuration_revision, 2)
+
     def test_microseconds_regression_requires_division(self):
         result = self.result(snapshot("microseconds"))
         self.assertEqual(result.status, "violated")
