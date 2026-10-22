@@ -163,7 +163,7 @@ The patch body contains `expected_revision`, `event_time_unit` and `reason`. Use
 
 Run tests with `uv run python -m unittest discover -s tests -v`. Set `TEST_DATABASE_URL` to a dedicated TLS-enabled PostgreSQL test database to include integration tests; those tests apply migrations, change test producer configuration and retain append-only evidence. They are skipped when that variable is absent. Do not point the integration suite at the running demo database.
 
-Current local result: 96 unit/API tests passed; twenty-two network integration tests are skipped without `TEST_DATABASE_URL`. Those twenty-two repository test cases also passed against isolated embedded PostgreSQL through a temporary test adapter, validating migrations, SQL, transactions, deduplication, restart identity and evidence immutability. This does not validate psycopg/TLS/network behavior against Aiven. The native PostgreSQL test server was blocked by sandbox shared-memory permissions. Lint, formatting and lockfile checks passed.
+Current local result: 97 unit/API tests passed; twenty-two network integration tests are skipped without `TEST_DATABASE_URL`. Those twenty-two repository test cases also passed against isolated embedded PostgreSQL through a temporary test adapter, validating migrations, SQL, transactions, deduplication, restart identity and evidence immutability. This does not validate psycopg/TLS/network behavior against Aiven. The native PostgreSQL test server was blocked by sandbox shared-memory permissions. Lint, formatting and lockfile checks passed.
 
 See [the architecture views](docs/architecture/index.md), [the table inventory](docs/architecture/data-model.md) and [contract definitions/live verification](docs/contracts.md). The next implementation slice is proposal/approval policy and deterministic recovery after live investigation verification.
 
@@ -185,3 +185,14 @@ The workbench is available at `/` after redeployment, with direct incident links
 - [x] Darken the workbench and increase text sizes with a self-hosted Inter font.
 
 The next repair slice is specified in [the producer PR workflow](docs/producer-repair.md). A database-only Bruno fault does not create a file diff: the PR demonstration must introduce the fault in the versioned producer config and apply it through deployment. A PR is a proposed repair; only verified new data establishes resolution.
+
+## Demo readiness — next steps
+
+- [x] Fix the default Anthropic SDK client retry argument and cover the production client path with a regression test.
+- [ ] Redeploy the SDK fix, retry the existing failed incident through Bruno, and verify a persisted finding on the workbench.
+- [ ] Preserve one verified demo incident and its frozen evidence; defer historical cleanup until that example succeeds.
+- [ ] Add isolated replay for successful attempts, with fresh model calls and no producer writes.
+- [ ] Add versioned producer configuration and deployment synchronization; producer changes currently use the database API.
+- [ ] Implement a constrained producer repair PR, followed by merge/deployment and verified recovery.
+
+The retry endpoint already accepts failed attempts on open incidents. The dashboard displays attempts but remains read-only. Model selection currently uses `ANTHROPIC_MODEL` in Runtime environment settings and requires an application restart or redeployment; a dashboard model selector is not implemented.
