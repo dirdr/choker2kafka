@@ -20,6 +20,34 @@ class KafkaStream:
         self.producer = None
         self.consumer = None
 
+    def watermarks(self) -> list[dict]:
+        consumer = Consumer(
+            {
+                **kafka_configuration(),
+                "group.id": f"{self.group_id}-reset",
+                "enable.auto.commit": False,
+                "allow.auto.create.topics": False,
+            }
+        )
+        try:
+            metadata = consumer.list_topics(timeout=5)
+            topic = metadata.topics.get(self.topic)
+            if topic is None:
+                return []
+            if topic.error:
+                raise KafkaException(topic.error)
+            result = []
+            for partition in topic.partitions:
+                _, high = consumer.get_watermark_offsets(
+                    TopicPartition(self.topic, partition), timeout=5, cached=False
+                )
+                result.append(
+                    {"topic": self.topic, "partition": partition, "offset": high}
+                )
+            return result
+        finally:
+            consumer.close()
+
     def open(self) -> None:
         configuration = kafka_configuration()
         admin = AdminClient(configuration)
