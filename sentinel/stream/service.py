@@ -35,7 +35,12 @@ class StreamWorker:
         if now >= self.next_batch_at:
             configuration = self.repository.configuration()
             self.stream.publish(
-                [make_order(configuration, self.code_version) for _ in range(10)]
+                [
+                    make_order(
+                        configuration, configuration.source_commit or self.code_version
+                    )
+                    for _ in range(10)
+                ]
             )
             self.next_batch_at = now + 1
         records = self.stream.receive()

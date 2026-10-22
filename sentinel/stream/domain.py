@@ -19,6 +19,7 @@ class ProducerConfiguration(BaseModel):
     producer_id: str = "checkout"
     revision: int = Field(ge=1, le=2**63 - 1, strict=True)
     event_time_unit: TimestampUnit
+    source_commit: str | None = None
 
 
 class ConfigurationChange(BaseModel):

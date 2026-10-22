@@ -59,7 +59,7 @@ class PostgresRepository:
     def configuration(self) -> ProducerConfiguration:
         with self.connection() as connection:
             row = connection.execute(
-                "SELECT producer_id, revision, event_time_unit "
+                "SELECT producer_id, revision, event_time_unit, source_commit "
                 "FROM sentinel.producer_configurations WHERE producer_id = 'checkout'"
             ).fetchone()
         return ProducerConfiguration.model_validate(row)
@@ -77,7 +77,7 @@ class PostgresRepository:
                 raise RevisionConflict
             row = connection.execute(
                 "UPDATE sentinel.producer_configurations "
-                "SET revision = revision + 1, event_time_unit = %s, updated_at = clock_timestamp() "
+                "SET revision = revision + 1, event_time_unit = %s, source_commit = NULL, updated_at = clock_timestamp() "
                 "WHERE producer_id = 'checkout' AND revision = %s "
                 "RETURNING producer_id, revision, event_time_unit",
                 (change.event_time_unit.value, change.expected_revision),

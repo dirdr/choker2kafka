@@ -1,0 +1,4 @@
+{
+  "producer_id": "checkout",
+  "event_time_unit": "milliseconds"
+}

@@ -14,6 +14,9 @@ from sentinel.health import router as health_router
 from sentinel.investigation.postgres import InvestigationRepository
 from sentinel.investigation.service import InvestigationWorker
 from sentinel.investigation.web import router as investigation_router
+from sentinel.producer.postgres import ProducerRepository
+from sentinel.producer.service import ProducerSourceWorker
+from sentinel.producer.web import router as producer_router
 from sentinel.readiness import router as readiness_router
 from sentinel.stream.kafka import KafkaStream
 from sentinel.stream.postgres import PostgresRepository
@@ -54,6 +57,9 @@ async def lifespan(app: FastAPI):
         investigator = InvestigationWorker(app.state.investigation_repository)
         app.state.investigation_worker = investigator
         workers.append(investigator)
+    source_worker = ProducerSourceWorker(ProducerRepository(app.state.repository))
+    app.state.producer_source_worker = source_worker
+    workers.append(source_worker)
     tasks = [asyncio.create_task(asyncio.to_thread(worker.run)) for worker in workers]
     try:
         yield
@@ -61,7 +67,12 @@ async def lifespan(app: FastAPI):
         for worker in workers:
             worker.stop()
         await asyncio.gather(*tasks)
-        for name in ("stream_worker", "detection_worker", "investigation_worker"):
+        for name in (
+            "stream_worker",
+            "detection_worker",
+            "investigation_worker",
+            "producer_source_worker",
+        ):
             if hasattr(app.state, name):
                 delattr(app.state, name)
 
@@ -70,6 +81,7 @@ app = FastAPI(title="Kafka Contract Sentinel", version="0.1.0", lifespan=lifespa
 app.include_router(health_router)
 app.include_router(readiness_router)
 app.include_router(stream_router)
+app.include_router(producer_router)
 app.include_router(detection_router)
 app.include_router(investigation_router)
 app.mount("/static", StaticFiles(directory=WORKBENCH_ROOT / "static"), name="static")
