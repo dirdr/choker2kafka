@@ -168,12 +168,10 @@ class PostgresRepository:
     def status(self) -> dict:
         with self.connection() as connection:
             row = connection.execute(
-                "SELECT count(*) AS recent_events, max(ingested_at) AS last_ingested_at "
-                "FROM sentinel.events WHERE ingested_at >= now() - interval '10 seconds'"
+                "SELECT "
+                "(SELECT count(*) FROM sentinel.events WHERE ingested_at >= now() - interval '10 seconds') AS recent_events, "
+                "(SELECT count(*) FROM sentinel.rejected_records WHERE ingested_at >= now() - interval '10 seconds') AS recent_rejections, "
+                "greatest((SELECT max(ingested_at) FROM sentinel.events), "
+                "(SELECT max(ingested_at) FROM sentinel.rejected_records)) AS last_ingested_at"
             ).fetchone()
-            if row["last_ingested_at"] is None:
-                latest = connection.execute(
-                    "SELECT ingested_at FROM sentinel.events ORDER BY ingested_at DESC LIMIT 1"
-                ).fetchone()
-                row["last_ingested_at"] = latest["ingested_at"] if latest else None
         return {"transport": transport_status(row["last_ingested_at"]), **row}

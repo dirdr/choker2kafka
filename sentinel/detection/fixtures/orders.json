@@ -1,0 +1,38 @@
+{
+  "contract": {
+    "contract_id": "orders.checkout",
+    "version": 1,
+    "topic": "orders",
+    "owner": "checkout-team",
+    "effective_from": "2026-01-01T00:00:00Z",
+    "rules": [
+      {
+        "rule_id": "event-time-semantics",
+        "kind": "timestamp_bounds",
+        "fields": ["event_time"],
+        "parameters": {
+          "unit": "milliseconds",
+          "max_age_seconds": 60,
+          "max_future_seconds": 5
+        }
+      }
+    ]
+  },
+  "producer_context": {
+    "producer_id": "checkout",
+    "version": 1,
+    "effective_from": "2026-01-01T00:00:00Z",
+    "owner": "checkout-team",
+    "provenance": "seeded_synthetic_metadata",
+    "consumers": [
+      {
+        "consumer_id": "order-rate-dashboard",
+        "expectation": "event_time is a Unix timestamp in milliseconds for event-time windows"
+      },
+      {
+        "consumer_id": "fulfilment-latency",
+        "expectation": "event_time is a Unix timestamp in milliseconds for latency calculations"
+      }
+    ]
+  }
+}

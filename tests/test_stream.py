@@ -278,9 +278,10 @@ class StreamApiTests(unittest.IsolatedAsyncioTestCase):
         self.repository.recent_events.assert_not_called()
 
     async def test_worker_is_stopped_on_shutdown(self):
-        self.addCleanup(lambda: delattr(app.state, "stream_worker"))
         with (
-            patch.dict(os.environ, {"STREAM_ENABLED": "true"}),
+            patch.dict(
+                os.environ, {"STREAM_ENABLED": "true", "DETECTION_ENABLED": "false"}
+            ),
             patch("sentinel.main.StreamWorker") as worker,
         ):
             async with lifespan(app):

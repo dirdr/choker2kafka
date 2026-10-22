@@ -17,3 +17,4 @@ package = false
 
 [tool.ruff.lint.per-file-ignores]
 "sentinel/stream/service.py" = ["BLE001"]
+"sentinel/detection/service.py" = ["BLE001"]

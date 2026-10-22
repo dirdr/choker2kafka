@@ -6,6 +6,9 @@ from pathlib import Path
 from dotenv import load_dotenv
 from fastapi import FastAPI
 
+from sentinel.detection.postgres import DetectionRepository
+from sentinel.detection.service import DetectionWorker
+from sentinel.detection.web import router as detection_router
 from sentinel.health import router as health_router
 from sentinel.readiness import router as readiness_router
 from sentinel.stream.kafka import KafkaStream
@@ -19,8 +22,9 @@ load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     app.state.repository = PostgresRepository()
-    worker = None
-    task = None
+    app.state.detection_repository = DetectionRepository(app.state.repository)
+    workers = []
+    tasks = []
     if os.getenv("STREAM_ENABLED", "true").lower() == "true":
         worker = StreamWorker(
             app.state.repository,
@@ -31,16 +35,27 @@ async def lifespan(app: FastAPI):
             os.getenv("CODE_VERSION", "0.1.0"),
         )
         app.state.stream_worker = worker
-        task = asyncio.create_task(asyncio.to_thread(worker.run))
+        workers.append(worker)
+    if os.getenv("DETECTION_ENABLED", "true").lower() == "true":
+        detector = DetectionWorker(
+            app.state.detection_repository, os.getenv("KAFKA_TOPIC", "orders")
+        )
+        app.state.detection_worker = detector
+        workers.append(detector)
+    tasks = [asyncio.create_task(asyncio.to_thread(worker.run)) for worker in workers]
     try:
         yield
     finally:
-        if worker is not None:
+        for worker in workers:
             worker.stop()
-            await task
+        await asyncio.gather(*tasks)
+        for name in ("stream_worker", "detection_worker"):
+            if hasattr(app.state, name):
+                delattr(app.state, name)
 
 
 app = FastAPI(title="Kafka Contract Sentinel", version="0.1.0", lifespan=lifespan)
 app.include_router(health_router)
 app.include_router(readiness_router)
 app.include_router(stream_router)
+app.include_router(detection_router)
