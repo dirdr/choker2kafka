@@ -6,7 +6,7 @@ from urllib.error import HTTPError, URLError
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 import psycopg
-from confluent_kafka import KafkaException
+from confluent_kafka import KafkaError, KafkaException
 from confluent_kafka.admin import AdminClient
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
@@ -98,8 +98,15 @@ def check_postgres() -> dict[str, str]:
 
 
 def check_kafka() -> dict[str, str]:
+    failures: list[int] = []
+    client = None
     try:
-        client = AdminClient(kafka_configuration())
+        client = AdminClient(
+            {
+                **kafka_configuration(),
+                "error_cb": lambda error: failures.append(error.code()),
+            }
+        )
         metadata = client.list_topics(timeout=5)
         if not metadata.brokers:
             return {"status": "error", "detail": "Kafka returned no brokers"}
@@ -107,10 +114,42 @@ def check_kafka() -> dict[str, str]:
     except MissingConfiguration as error:
         return {"status": "not_configured", "detail": str(error)}
     except (KafkaException, RuntimeError, ValueError, OSError) as error:
+        if client is not None:
+            client.poll(0)
+        if (
+            isinstance(error, KafkaException)
+            and error.args
+            and isinstance(error.args[0], KafkaError)
+        ):
+            failures.append(error.args[0].code())
         logger.warning("Kafka readiness failed (%s)", type(error).__name__)
+        if KafkaError._SSL in failures:
+            code = "tls_failed"
+            detail = "Kafka TLS failed; check the CA certificate and the port for the selected authentication method"
+        elif any(
+            code in failures
+            for code in (
+                KafkaError._AUTHENTICATION,
+                KafkaError.SASL_AUTHENTICATION_FAILED,
+            )
+        ):
+            code = "authentication_failed"
+            detail = "Kafka authentication failed; check the SASL username, password, mechanism and port"
+        elif KafkaError._RESOLVE in failures:
+            code = "dns_failed"
+            detail = (
+                "Kafka hostname could not be resolved; check KAFKA_BOOTSTRAP_SERVERS"
+            )
+        elif KafkaError._INVALID_ARG in failures:
+            code = "invalid_configuration"
+            detail = "Kafka client configuration is invalid; check the PEM certificate format and authentication settings"
+        else:
+            code = "connection_failed"
+            detail = "Kafka connection failed; check the broker port, network access and authentication method"
         return {
             "status": "error",
-            "detail": "Check Kafka credentials, TLS and network access",
+            "code": code,
+            "detail": detail,
         }
 
 

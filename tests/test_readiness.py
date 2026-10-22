@@ -10,6 +10,7 @@ from unittest.mock import patch
 from urllib.error import HTTPError, URLError
 
 import psycopg
+from confluent_kafka import KafkaError, KafkaException
 
 from sentinel import readiness
 from sentinel.main import app
@@ -111,6 +112,39 @@ class ReadinessTests(unittest.TestCase):
         with patch.object(readiness, "AdminClient", side_effect=ValueError("secret")):
             result = readiness.check_kafka()
         self.assertEqual(result["status"], "error")
+        self.assertNotIn("secret", json.dumps(result))
+
+    def test_kafka_reports_safe_failure_categories(self):
+        self.configure_kafka()
+        for error_code, expected in (
+            (KafkaError._SSL, "tls_failed"),
+            (KafkaError._AUTHENTICATION, "authentication_failed"),
+            (KafkaError.SASL_AUTHENTICATION_FAILED, "authentication_failed"),
+            (KafkaError._RESOLVE, "dns_failed"),
+            (KafkaError._INVALID_ARG, "invalid_configuration"),
+            (KafkaError._TRANSPORT, "connection_failed"),
+        ):
+            with self.subTest(error_code=error_code):
+                error = KafkaException(KafkaError(error_code, "secret"))
+                with patch.object(readiness, "AdminClient", side_effect=error):
+                    result = readiness.check_kafka()
+                self.assertEqual(result["code"], expected)
+                self.assertNotIn("secret", json.dumps(result))
+
+    def test_kafka_uses_underlying_failure_when_metadata_times_out(self):
+        self.configure_kafka()
+        with patch.object(readiness, "AdminClient") as client:
+            client.return_value.list_topics.side_effect = KafkaException(
+                KafkaError(KafkaError._TRANSPORT)
+            )
+
+            def deliver_error(timeout):
+                callback = client.call_args.args[0]["error_cb"]
+                callback(KafkaError(KafkaError._AUTHENTICATION, "secret"))
+
+            client.return_value.poll.side_effect = deliver_error
+            result = readiness.check_kafka()
+        self.assertEqual(result["code"], "authentication_failed")
         self.assertNotIn("secret", json.dumps(result))
 
     def test_anthropic_authenticates_without_generating_tokens(self):
